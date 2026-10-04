@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>工作排期甘特图</title>
+<style>
+:root{
+  --row-h:40px;
+  --m-head:22px;
+  --d-head:26px;
+  --cap-h:18px;
+  --head-h:calc(var(--m-head) + var(--d-head) + var(--cap-h));
+  --border:#e3e6ea;
+  --ink:#24292f;
+  --muted:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font:13px/1.45 "Segoe UI","Microsoft YaHei",sans-serif;color:var(--ink);display:flex;flex-direction:column;background:#f7f8fa}
+header{padding:10px 16px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:16px;font-weight:600}
+.snap-banner{background:#fff7e0;color:#7a5b00;padding:2px 10px;border-radius:10px;font-size:12px}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.toolbar select,.toolbar input,.toolbar button{font:inherit;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer}
+.toolbar button:hover{background:#f0f2f5}
+button.primary{background:#0969da;color:#fff;border-color:#0969da}
+button.primary:hover{background:#0757b3}
+.spacer{flex:1}
+.legend{display:flex;gap:14px;align-items:center;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.lg{display:inline-flex;align-items:center;gap:4px}
+.lg i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.lg i.diamond{width:9px;height:9px;border-radius:0;transform:rotate(45deg);background:#d1242f}
+.scroll{flex:1;overflow:auto;background:#fff}
+.grid{display:flex;min-width:100%;width:max-content}
+.left{position:sticky;left:0;z-index:6;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.05);flex:none}
+.lrow{display:flex;border-bottom:1px solid var(--border);height:var(--row-h);align-items:stretch}
+.lhead{height:var(--head-h);position:sticky;top:0;z-index:8;background:#f2f4f7;font-weight:600;color:var(--muted);font-size:12px}
+.cell{padding:6px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-right:1px solid var(--border);display:flex;align-items:center}
+.c-name{width:200px;flex-direction:column;align-items:flex-start;justify-content:center;line-height:1.2}
+.c-name small{color:var(--muted);font-weight:400}
+.c-who{width:70px;justify-content:center}
+.c-est{width:88px;flex-direction:column;align-items:flex-start;justify-content:center;line-height:1.2;font-size:11px}
+.c-est b{font-size:12px}
+.c-ddl{width:82px;justify-content:center;font-size:12px}
+.c-ddl.over{color:#d1242f;font-weight:600}
+.c-prog{width:60px;justify-content:center;font-size:11px}
+.c-who span{display:inline-block;padding:1px 8px;border-radius:10px;color:#fff;font-size:11px}
+.lrow.task{cursor:pointer}
+.lrow.task:hover{background:#f6f8fa}
+.lrow.task.done .c-name{color:var(--muted);text-decoration:line-through}
+.right{flex:none;position:relative}
+.rhead{position:sticky;top:0;z-index:7;background:#fff}
+.mrow{height:var(--m-head);display:flex;border-bottom:1px solid var(--border);position:relative}
+.mlab{position:absolute;height:100%;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);border-right:1px solid var(--border);white-space:nowrap;overflow:hidden}
+.drow{height:var(--d-head);display:flex;border-bottom:1px solid var(--border)}
+.dcell{flex:none;border-right:1px solid #f0f2f5;text-align:center;font-size:11px;color:var(--muted);display:flex;flex-direction:column;justify-content:center;line-height:1.1}
+.dcell .wd{font-size:9px}
+.dcell.we{background:#f6f8fa}
+.dcell.today{background:#ddf4ff;color:#0969da;font-weight:700}
+.caprow{height:var(--cap-h);display:flex;border-bottom:2px solid var(--border);background:#fafbfc}
+.capcell{flex:none;border-right:1px solid #f0f2f5;font-size:9px;text-align:center;line-height:18px;color:#fff}
+.cap0{background:#eaf6ec;color:#1a7f37}
+.cap1{background:#ffd33d66;color:#7a5b00}
+.cap2{background:#f8c8c8;color:#d1242f;font-weight:700}
+.capcell.we{opacity:.45}
+.trow{height:var(--row-h);position:relative;border-bottom:1px solid var(--border)}
+.tbg{position:absolute;inset:0;display:flex}
+.tbg .day{flex:none;border-right:1px solid #f0f2f5}
+.tbg .day.we{background:#f6f8fa}
+.bar{position:absolute;top:9px;height:22px;border-radius:5px;cursor:pointer;display:flex;align-items:center;padding:0 6px;color:#fff;font-size:11px;white-space:nowrap;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.bar .fill{position:absolute;inset:0;border-radius:5px;background:rgba(0,0,0,.28);transform-origin:left;pointer-events:none}
+.bar span{position:relative;z-index:1}
+.bar.done{opacity:.45}
+.bar.paused{opacity:.7;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.25) 0 6px,transparent 6px 12px)!important}
+.bar.over-ddl{outline:2px solid #d1242f;outline-offset:1px}
+.ddl-mark{position:absolute;top:4px;width:10px;height:10px;background:#d1242f;transform:rotate(45deg);z-index:3;border:1.5px solid #fff;box-shadow:0 0 0 1px #d1242f}
+.todayline{position:absolute;top:0;bottom:0;width:2px;background:#d1242f;z-index:4;pointer-events:none}
+.todayline::before{content:"今天";position:absolute;top:-2px;left:4px;font-size:10px;color:#d1242f;background:#fff;padding:0 2px}
+.empty{padding:60px;text-align:center;color:var(--muted)}
+dialog{border:none;border-radius:10px;padding:0;width:420px;box-shadow:0 8px 30px rgba(0,0,0,.2)}
+dialog::backdrop{background:rgba(0,0,0,.35)}
+.dlg-head{padding:14px 18px;border-bottom:1px solid var(--border);font-weight:600}
+.dlg-body{padding:16px 18px;display:grid;grid-template-columns:90px 1fr;gap:10px 12px;align-items:center}
+.dlg-body label{font-size:12px;color:var(--muted);text-align:right}
+.dlg-body input,.dlg-body select,.dlg-body textarea{font:inherit;padding:5px 8px;border:1px solid var(--border);border-radius:6px;width:100%}
+.dlg-foot{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:space-between}
+.dlg-foot .right-btns{display:flex;gap:8px}
+footer{padding:6px 16px;background:#fff;border-top:1px solid var(--border);font-size:11px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<header>
+  <h1>工作排期甘特图</h1>
+  <span id="snapBanner" class="snap-banner" style="display:none"></span>
+  <div class="toolbar">
+    <button class="primary edit-only" id="btnAdd">＋ 新增任务</button>
+    <button id="btnPrev">◀</button>
+    <button id="btnToday">回到今天</button>
+    <button id="btnNext">▶</button>
+    <select id="selAssignee"><option value="">全部指派人</option></select>
+    <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="chkDone"> 隐藏已完成</label>
+    <select id="selZoom">
+      <option value="20">紧凑</option>
+      <option value="28" selected>标准</option>
+      <option value="44">宽松</option>
+    </select>
+    <div class="spacer"></div>
+    <button class="edit-only" id="btnImport">导入 JSON</button>
+    <button class="edit-only" id="btnExport">导出 JSON</button>
+    <button class="edit-only" id="btnExcel" title="生成 Excel 可打开的表格">📊 导出 Excel</button>
+    <button class="edit-only" id="btnSnap" title="生成一个只读 HTML 发给领导">📤 导出只读快照</button>
+    <button class="edit-only" id="btnLabels" title="自定义列名">⚙ 列名</button>
+  </div>
+</header>
+<div class="scroll" id="scroll">
+  <div class="grid">
+    <div class="left" id="left"></div>
+    <div class="right" id="right"></div>
+  </div>
+</div>
+<footer>
+  <span class="lg"><i style="background:#eaf6ec"></i>负荷条: 空闲</span>
+  <span class="lg"><i style="background:#ffd33d"></i>1 个任务</span>
+  <span class="lg"><i style="background:#f8c8c8"></i>≥2 并行</span>
+  <span class="lg"><i class="diamond"></i>Deadline</span>
+  <span class="lg"><i style="background:#d1242f;width:2px;height:14px;border-radius:0"></i>今天</span>
+  <span id="assigneeLegend"></span>
+</footer>
+
+<dialog id="dlg">
+  <div class="dlg-head" id="dlgTitle">编辑任务</div>
+  <div class="dlg-body">
+    <label>任务名</label><input id="fName">
+    <label>任务内容</label><textarea id="fContent" rows="2"></textarea>
+    <label>指派人</label><input id="fWho" list="whoList"><datalist id="whoList"></datalist>
+    <label>开始日期</label><input id="fStart" type="date">
+    <label>预计完成</label><input id="fEstEnd" type="date" title="直接选预计完成日期">
+    <label>或预计工时</label><input id="fEst" type="number" min="0.5" step="0.5" title="不填预计完成日期时, 按工作日数推算">
+    <label>Deadline</label><input id="fDdl" type="date">
+    <label>状态</label>
+    <select id="fStatus">
+      <option value="todo">未开始</option>
+      <option value="doing">进行中</option>
+      <option value="paused">暂停</option>
+      <option value="done">已完成</option>
+    </select>
+    <label>进度 %</label><input id="fProg" type="number" min="0" max="100" step="5">
+  </div>
+  <div class="dlg-foot">
+    <button id="fDel" style="color:#d1242f">删除</button>
+    <div class="right-btns">
+      <button id="fCancel">取消</button>
+      <button class="primary" id="fSave">保存</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dlgLabels" style="width:460px">
+  <div class="dlg-head">自定义列名 / Custom Column Names</div>
+  <div class="dlg-body" id="labelFields"></div>
+  <div class="dlg-foot">
+    <div class="right-btns" style="margin-left:auto">
+      <button id="lEnglish">English 预设</button>
+      <button id="lReset">恢复默认</button>
+      <button id="lCancel">取消</button>
+      <button class="primary" id="lSave">保存</button>
+    </div>
+  </div>
+</dialog>
+<input type="file" id="fileInput" accept=".json" style="display:none">
+
+<script>
+const DAY=86400000, DAY_W=()=>+document.getElementById('selZoom').value;
+const $=s=>document.getElementById(s);
+const PALETTE=['#0969da','#8250df','#1a7f37','#bf8700','#cf222e','#0e7c86','#d4a017','#57606a'];
+
+const DEFAULT_LABELS={name:'任务',who:'指派人',est:'起 → 预计完成',ddl:'Deadline',prog:'进度'};
+const EN_LABELS={name:'Task',who:'Assigned By',est:'Start → Est. Finish',ddl:'Deadline',prog:'Progress'};
+let LABELS=Object.assign({},DEFAULT_LABELS);
+
+const snapEl=document.querySelector('script[type="application/json"][id="snapshot-data"]');
+const SNAPSHOT=!!snapEl;
+let tasks, viewStart;
+
+if(SNAPSHOT){
+  const snap=JSON.parse(snapEl.textContent);
+  tasks=snap.tasks||snap;
+  if(snap.labels)Object.assign(LABELS,snap.labels);
+  viewStart=snap.viewStart||null;
+  document.querySelectorAll('.edit-only').forEach(e=>e.style.display='none');
+  $('snapBanner').style.display='';
+  $('snapBanner').textContent='只读快照 · 生成于 '+(snap.generated||'');
+}else{
+  tasks=JSON.parse(localStorage.getItem('gantt-tasks')||'null')||sample();
+  viewStart=JSON.parse(localStorage.getItem('gantt-view')||'null');
+  Object.assign(LABELS,JSON.parse(localStorage.getItem('gantt-labels')||'{}'));
+}
+if(!viewStart)viewStart=fmt(addDays(today(),-3));
+viewStart=parseISO(viewStart);
+
+function sample(){
+  const t=today(),d=o=>fmt(addDays(t,o));
+  return [
+    {id:1,name:'整理 Q3 数据报告',who:'王磊',start:d(-2),est:3,ddl:d(6),status:'doing',prog:60,content:'需要财务数据'},
+    {id:2,name:'客户演示 Demo 准备',who:'陈静',start:d(1),est:2,ddl:d(4),status:'todo',prog:0,content:''},
+    {id:3,name:'修复线上 Bug #4821',who:'刘洋',start:d(0),est:1,ddl:d(2),status:'doing',prog:30,content:'优先级高'},
+    {id:4,name:'代码评审 + 文档更新',who:'陈静',start:d(4),estEnd:d(6),ddl:d(9),status:'todo',prog:0,content:''},
+    {id:5,name:'新人培训材料',who:'王磊',start:d(7),est:3,ddl:d(12),status:'todo',prog:0,content:''},
+  ];
+}
+
+function today(){const n=new Date();return new Date(n.getFullYear(),n.getMonth(),n.getDate())}
+function parseISO(s){const[a,b,c]=s.split('-').map(Number);return new Date(a,b-1,c)}
+function fmt(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function fmtShort(d){return (d.getMonth()+1)+'/'+d.getDate()}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+function isWE(d){const w=d.getDay();return w===0||w===6}
+function estFinish(t){
+  if(t.estEnd)return parseISO(t.estEnd);
+  let d=parseISO(t.start),left=Math.max(1,t.est||1);
+  while(left>0){ if(!isWE(d))left--; if(left>0)d=addDays(d,1); }
+  return d;
+}
+function daysBetween(a,b){return Math.round((b-a)/DAY)}
+function whoColor(who){
+  let h=0;for(const c of who)h=(h*31+c.charCodeAt(0))>>>0;
+  return PALETTE[h%PALETTE.length];
+}
+function visible(){
+  let v=tasks;
+  const f=$('selAssignee').value;
+  if(f)v=v.filter(t=>t.who===f);
+  if($('chkDone').checked)v=v.filter(t=>t.status!=='done');
+  return v;
+}
+function save(){
+  if(SNAPSHOT)return;
+  localStorage.setItem('gantt-tasks',JSON.stringify(tasks));
+  localStorage.setItem('gantt-view',JSON.stringify(fmt(viewStart)));
+}
+
+function range(list){
+  let end=addDays(viewStart,28);
+  for(const t of list){
+    const f=estFinish(t),dl=t.ddl?parseISO(t.ddl):f;
+    if(dl>end)end=dl; if(f>end)end=f;
+  }
+  end=addDays(end,4);
+  return daysBetween(viewStart,end);
+}
+
+function render(){
+  const list=visible().sort((a,b)=>a.start<b.start?-1:1);
+  const nDays=range(list), W=DAY_W(), totalW=nDays*W;
+
+  // left header + rows
+  let lh=`<div class="lrow lhead">
+    <div class="cell c-name">${esc(LABELS.name)}</div><div class="cell c-who">${esc(LABELS.who)}</div>
+    <div class="cell c-est">${esc(LABELS.est)}</div><div class="cell c-ddl">${esc(LABELS.ddl)}</div>
+    <div class="cell c-prog">${esc(LABELS.prog)}</div></div>`;
+  for(const t of list){
+    const fin=estFinish(t),over=t.ddl&&fin>parseISO(t.ddl);
+    const sub=t.content||t.note||'';
+    lh+=`<div class="lrow task ${t.status}" data-id="${t.id}">
+      <div class="cell c-name" title="${esc(sub)}"><div>${esc(t.name)}</div>${sub?`<small>${esc(sub)}</small>`:''}</div>
+      <div class="cell c-who"><span style="background:${whoColor(t.who)}">${esc(t.who)}</span></div>
+      <div class="cell c-est"><b>${fmtShort(parseISO(t.start))} → ${fmtShort(fin)}</b><small>${t.estEnd?'':(t.est||1)+' 工作日'}</small></div>
+      <div class="cell c-ddl ${over?'over':''}">${t.ddl?fmtShort(parseISO(t.ddl)):'—'}</div>
+      <div class="cell c-prog">${t.status==='done'?'✓':t.prog+'%'}</div></div>`;
+  }
+  $('left').innerHTML=lh;
+
+  // right header
+  let mrow='',drow='',cap='';
+  let mStart=viewStart;
+  const monthSegs=[];
+  for(let i=0;i<nDays;i++){
+    const d=addDays(viewStart,i);
+    if(i===nDays-1||addDays(d,1).getMonth()!==d.getMonth())
+      monthSegs.push({start:mStart,end:d}),mStart=addDays(d,1);
+  }
+  for(const s of monthSegs){
+    const x=daysBetween(viewStart,s.start)*W, w=(daysBetween(s.start,s.end)+1)*W;
+    mrow+=`<div class="mlab" style="left:${x}px;width:${w}px">${s.start.getFullYear()}年${s.start.getMonth()+1}月</div>`;
+  }
+  // capacity per day = tasks active that day (not done)
+  for(let i=0;i<nDays;i++){
+    const d=addDays(viewStart,i),we=isWE(d),isT=+d===+today();
+    drow+=`<div class="dcell ${we?'we':''} ${isT?'today':''}" style="width:${W}px">${d.getDate()}<span class="wd">${'日一二三四五六'[d.getDay()]}</span></div>`;
+    let cnt=0,names=[];
+    if(!we)for(const t of tasks){
+      if(t.status==='done')continue;
+      if(d>=parseISO(t.start)&&d<=estFinish(t)){cnt++;names.push(t.name)}
+    }
+    const cls=we?'we':(cnt===0?'cap0':cnt===1?'cap1':'cap2');
+    cap+=`<div class="capcell ${cls}" style="width:${W}px" title="${we?'周末':(names.join('&#10;')||'空闲')}">${we?'':(cnt===0?'空':cnt)}</div>`;
+  }
+  let rh=`<div class="rhead"><div class="mrow" style="width:${totalW}px">${mrow}</div>
+    <div class="drow" style="width:${totalW}px">${drow}</div>
+    <div class="caprow" style="width:${totalW}px">${cap}</div></div>`;
+
+  // task rows
+  const t0=parseISO(fmt(today()));
+  for(const t of list){
+    let bg='';
+    for(let i=0;i<nDays;i++)bg+=`<div class="day ${isWE(addDays(viewStart,i))?'we':''}" style="width:${W}px"></div>`;
+    const s=parseISO(t.start),f=estFinish(t);
+    let x=daysBetween(viewStart,s)*W, w=(daysBetween(s,f)+1)*W;
+    if(x<0){w+=x;x=0}
+    const col=whoColor(t.who);
+    const over=t.ddl&&f>parseISO(t.ddl);
+    const tip=`${esc(t.name)}&#10;${LABELS.who}: ${esc(t.who)}&#10;${t.start} → ${fmt(fin)}&#10;${LABELS.ddl}: ${t.ddl||'—'}&#10;${LABELS.prog}: ${t.prog}%${(t.content||t.note)?'&#10;'+esc(t.content||t.note):''}`;
+    let bar=`<div class="bar ${t.status} ${over?'over-ddl':''}" data-id="${t.id}"
+      style="left:${x}px;width:${Math.max(w,W*.6)}px;background:${col}"
+      title="${tip}">
+      <div class="fill" style="transform:scaleX(${t.prog/100})"></div><span>${esc(t.name)}</span></div>`;
+    let dm='';
+    if(t.ddl){
+      const dx=daysBetween(viewStart,parseISO(t.ddl))*W+W-8;
+      if(dx>=0)dm=`<div class="ddl-mark" style="left:${dx}px" title="Deadline: ${t.ddl}"></div>`;
+    }
+    rh+=`<div class="trow" style="width:${totalW}px"><div class="tbg">${bg}</div>${bar}${dm}</div>`;
+  }
+  if(!list.length)rh+=`<div class="empty">没有任务 — 点"＋ 新增任务"开始</div>`;
+  rh+=`<div class="todayline" style="left:${daysBetween(viewStart,t0)*W+W/2}px"></div>`;
+  $('right').innerHTML=rh;
+
+  // assignee filter + legend
+  const whos=[...new Set(tasks.map(t=>t.who))];
+  const cur=$('selAssignee').value;
+  $('selAssignee').innerHTML='<option value="">全部指派人</option>'+whos.map(w=>`<option ${w===cur?'selected':''}>${esc(w)}</option>`).join('');
+  $('whoList').innerHTML=whos.map(w=>`<option value="${esc(w)}">`).join('');
+  $('assigneeLegend').innerHTML=whos.map(w=>`<span class="lg"><i style="background:${whoColor(w)}"></i>${esc(w)}</span>`).join(' ');
+
+  // row interactions
+  if(!SNAPSHOT){
+    document.querySelectorAll('.lrow.task,.bar').forEach(el=>
+      el.addEventListener('click',()=>openDlg(+el.dataset.id)));
+  }
+}
+
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+// ----- dialog -----
+let editId=null;
+function openDlg(id){
+  editId=id;
+  const t=id?tasks.find(x=>x.id===id):{name:'',who:'',start:fmt(today()),est:1,estEnd:'',ddl:fmt(addDays(today(),7)),status:'todo',prog:0,content:''};
+  $('dlgTitle').textContent=id?'编辑任务':'新增任务';
+  $('fDel').style.visibility=id?'visible':'hidden';
+  $('fName').value=t.name;$('fContent').value=t.content||t.note||'';$('fWho').value=t.who;
+  $('fStart').value=t.start;$('fEstEnd').value=t.estEnd||'';$('fEst').value=t.est||1;
+  $('fDdl').value=t.ddl||'';$('fStatus').value=t.status;$('fProg').value=t.prog;
+  $('dlg').showModal();
+}
+$('btnAdd').onclick=()=>openDlg(null);
+$('fCancel').onclick=()=>$('dlg').close();
+$('fSave').onclick=()=>{
+  const t={
+    name:$('fName').value.trim()||'未命名任务',who:$('fWho').value.trim()||'未指定',
+    start:$('fStart').value||fmt(today()),estEnd:$('fEstEnd').value,
+    est:Math.max(.5,+$('fEst').value||1),
+    ddl:$('fDdl').value,status:$('fStatus').value,
+    prog:Math.min(100,Math.max(0,+$('fProg').value||0)),content:$('fContent').value.trim()
+  };
+  if(t.status==='done')t.prog=100;
+  if(editId)Object.assign(tasks.find(x=>x.id===editId),t);
+  else{t.id=Math.max(0,...tasks.map(x=>x.id))+1;tasks.push(t)}
+  save();$('dlg').close();render();
+};
+$('fDel').onclick=()=>{
+  tasks=tasks.filter(x=>x.id!==editId);save();$('dlg').close();render();
+};
+
+// ----- toolbar -----
+$('btnPrev').onclick=()=>{viewStart=addDays(viewStart,-14);save();render()};
+$('btnNext').onclick=()=>{viewStart=addDays(viewStart,14);save();render()};
+$('btnToday').onclick=()=>{viewStart=addDays(today(),-3);save();render()};
+$('selAssignee').onchange=render;
+$('chkDone').onchange=render;
+$('selZoom').onchange=()=>{save();render()};
+
+function download(name,content,type){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();
+}
+$('btnExport').onclick=()=>download('tasks.json',JSON.stringify(tasks,null,2),'application/json');
+$('btnImport').onclick=()=>$('fileInput').click();
+$('fileInput').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{tasks=JSON.parse(r.result);save();render()}catch{alert('JSON 格式不对')}};
+  r.readAsText(f);e.target.value='';
+};
+
+const STATUS_NAME={todo:'未开始',doing:'进行中',paused:'暂停',done:'已完成'};
+$('btnExcel').onclick=()=>{
+  const list=visible().sort((a,b)=>a.start<b.start?-1:1);
+  const nDays=range(list);
+  let h=`<tr><th>${esc(LABELS.name)}</th><th>${esc(LABELS.who)}</th><th>Content</th><th>Start</th><th>Est. Finish</th><th>${esc(LABELS.ddl)}</th><th>Status</th><th>${esc(LABELS.prog)}</th>`;
+  for(let i=0;i<nDays;i++){const d=addDays(viewStart,i);h+=`<th style="width:20px">${d.getMonth()+1}/${d.getDate()}</th>`}
+  h+='</tr>';
+  for(const t of list){
+    const f=estFinish(t),s=parseISO(t.start);
+    h+=`<tr><td>${esc(t.name)}</td><td>${esc(t.who)}</td><td>${esc(t.content||t.note||'')}</td><td>${t.start}</td><td>${fmt(f)}</td><td>${t.ddl||''}</td><td>${STATUS_NAME[t.status]||t.status}</td><td>${t.prog}%</td>`;
+    for(let i=0;i<nDays;i++){
+      const d=addDays(viewStart,i);
+      let bg='#ffffff',txt='';
+      if(isWE(d))bg='#eeeeee';
+      if(!isWE(d)&&d>=s&&d<=f)bg=whoColor(t.who);
+      if(t.ddl&&fmt(d)===t.ddl){bg='#d1242f';txt='◆'}
+      h+=`<td bgcolor="${bg}" style="background:${bg};color:#ffffff;text-align:center">${txt}</td>`;
+    }
+    h+='</tr>';
+  }
+  const html='﻿<html><head><meta charset="utf-8"></head><body><table border="1" cellspacing="0">'+h+'</table></body></html>';
+
+  download('排期-'+fmt(today())+'.xls',html,'application/vnd.ms-excel');
+};
+
+// 导出只读快照: 序列化整个页面 + 注入数据, 重开后自动进入只读模式
+$('btnSnap').onclick=()=>{
+  $('dlg').close();
+  const data=JSON.stringify({tasks,generated:fmt(today()),labels:LABELS,viewStart:fmt(viewStart)}).replace(/<\//g,'<\\/');
+  const inject=`<script type="application/json" id="snapshot-data">`+data+`<`+`/script>`;
+  let html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+  html=html.replace('</head>',inject+'</head>');
+  download('gantt-snapshot-'+fmt(today())+'.html',html,'text/html');
+};
+
+const LABEL_FIELDS=[
+  ['name','第1列 · 任务名'],['who','第2列 · 指派人'],['est','第3列 · 起止时间'],
+  ['ddl','第4列 · 截止时间'],['prog','第5列 · 进度']
+];
+$('btnLabels').onclick=()=>{
+  $('labelFields').innerHTML=LABEL_FIELDS.map(([k,d])=>`<label>${d}</label><input data-lk="${k}" value="${esc(LABELS[k])}">`).join('');
+  $('dlgLabels').showModal();
+};
+$('lCancel').onclick=()=>$('dlgLabels').close();
+$('lReset').onclick=()=>{document.querySelectorAll('#labelFields input').forEach(i=>i.value=DEFAULT_LABELS[i.dataset.lk])};
+$('lEnglish').onclick=()=>{document.querySelectorAll('#labelFields input').forEach(i=>i.value=EN_LABELS[i.dataset.lk])};
+$('lSave').onclick=()=>{
+  document.querySelectorAll('#labelFields input').forEach(i=>LABELS[i.dataset.lk]=i.value.trim()||DEFAULT_LABELS[i.dataset.lk]);
+  if(!SNAPSHOT)localStorage.setItem('gantt-labels',JSON.stringify(LABELS));
+  $('dlgLabels').close();render();
+};
+
+render();
+</script>
+</body>
+</html>
