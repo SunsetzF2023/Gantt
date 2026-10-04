@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<title>工作排期甘特图</title>
+<title>Workload Gantt</title>
 <style>
 :root{
   --row-h:40px;
@@ -75,7 +75,7 @@ button.primary:hover{background:#0757b3}
 .bar.over-ddl{outline:2px solid #d1242f;outline-offset:1px}
 .ddl-mark{position:absolute;top:4px;width:10px;height:10px;background:#d1242f;transform:rotate(45deg);z-index:3;border:1.5px solid #fff;box-shadow:0 0 0 1px #d1242f}
 .todayline{position:absolute;top:0;bottom:0;width:2px;background:#d1242f;z-index:4;pointer-events:none}
-.todayline::before{content:"今天";position:absolute;top:-2px;left:4px;font-size:10px;color:#d1242f;background:#fff;padding:0 2px}
+.todayline::before{content:"TODAY";position:absolute;top:-2px;left:4px;font-size:10px;color:#d1242f;background:#fff;padding:0 2px}
 .empty{padding:60px;text-align:center;color:var(--muted)}
 dialog{border:none;border-radius:10px;padding:0;width:420px;box-shadow:0 8px 30px rgba(0,0,0,.2)}
 dialog::backdrop{background:rgba(0,0,0,.35)}
@@ -90,26 +90,26 @@ footer{padding:6px 16px;background:#fff;border-top:1px solid var(--border);font-
 </head>
 <body>
 <header>
-  <h1>工作排期甘特图</h1>
+  <h1>Workload Gantt</h1>
   <span id="snapBanner" class="snap-banner" style="display:none"></span>
   <div class="toolbar">
-    <button class="primary edit-only" id="btnAdd">＋ 新增任务</button>
+    <button class="primary edit-only" id="btnAdd">+ New Task</button>
     <button id="btnPrev">◀</button>
-    <button id="btnToday">回到今天</button>
+    <button id="btnToday">Today</button>
     <button id="btnNext">▶</button>
-    <select id="selAssignee"><option value="">全部指派人</option></select>
-    <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="chkDone"> 隐藏已完成</label>
+    <select id="selAssignee"><option value="">All assignees</option></select>
+    <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="chkDone"> Hide done</label>
     <select id="selZoom">
-      <option value="20">紧凑</option>
-      <option value="28" selected>标准</option>
-      <option value="44">宽松</option>
+      <option value="20">Compact</option>
+      <option value="28" selected>Normal</option>
+      <option value="44">Wide</option>
     </select>
     <div class="spacer"></div>
-    <button class="edit-only" id="btnImport">导入 JSON</button>
-    <button class="edit-only" id="btnExport">导出 JSON</button>
-    <button class="edit-only" id="btnExcel" title="生成 Excel 可打开的表格">📊 导出 Excel</button>
-    <button class="edit-only" id="btnSnap" title="生成一个只读 HTML 发给领导">📤 导出只读快照</button>
-    <button class="edit-only" id="btnLabels" title="自定义列名">⚙ 列名</button>
+    <button class="edit-only" id="btnImport">Import JSON</button>
+    <button class="edit-only" id="btnExport">Export JSON</button>
+    <button class="edit-only" id="btnExcel" title="Download as a real .xlsx workbook">Export Excel</button>
+    <button class="edit-only" id="btnSnap" title="Generate a read-only HTML to share">Export Snapshot</button>
+    <button class="edit-only" id="btnLabels" title="Rename column headers">⚙ Columns</button>
   </div>
 </header>
 <div class="scroll" id="scroll">
@@ -119,51 +119,51 @@ footer{padding:6px 16px;background:#fff;border-top:1px solid var(--border);font-
   </div>
 </div>
 <footer>
-  <span class="lg"><i style="background:#eaf6ec"></i>负荷条: 空闲</span>
-  <span class="lg"><i style="background:#ffd33d"></i>1 个任务</span>
-  <span class="lg"><i style="background:#f8c8c8"></i>≥2 并行</span>
+  <span class="lg"><i style="background:#eaf6ec"></i>Daily load: free</span>
+  <span class="lg"><i style="background:#ffd33d"></i>1 task</span>
+  <span class="lg"><i style="background:#f8c8c8"></i>2+ parallel</span>
   <span class="lg"><i class="diamond"></i>Deadline</span>
-  <span class="lg"><i style="background:#d1242f;width:2px;height:14px;border-radius:0"></i>今天</span>
+  <span class="lg"><i style="background:#d1242f;width:2px;height:14px;border-radius:0"></i>Today</span>
   <span id="assigneeLegend"></span>
 </footer>
 
 <dialog id="dlg">
-  <div class="dlg-head" id="dlgTitle">编辑任务</div>
+  <div class="dlg-head" id="dlgTitle">Edit Task</div>
   <div class="dlg-body">
-    <label>任务名</label><input id="fName">
-    <label>任务内容</label><textarea id="fContent" rows="2"></textarea>
-    <label>指派人</label><input id="fWho" list="whoList"><datalist id="whoList"></datalist>
-    <label>开始日期</label><input id="fStart" type="date">
-    <label>预计完成</label><input id="fEstEnd" type="date" title="直接选预计完成日期">
-    <label>或预计工时</label><input id="fEst" type="number" min="0.5" step="0.5" title="不填预计完成日期时, 按工作日数推算">
+    <label>Task Name</label><input id="fName">
+    <label>Content</label><textarea id="fContent" rows="2"></textarea>
+    <label>Assigned By</label><input id="fWho" list="whoList"><datalist id="whoList"></datalist>
+    <label>Start</label><input id="fStart" type="date">
+    <label>Est. Finish</label><input id="fEstEnd" type="date" title="Pick the estimated finish date directly">
+    <label>or Est. Days</label><input id="fEst" type="number" min="0.5" step="0.5" title="Workdays, used when Est. Finish is empty">
     <label>Deadline</label><input id="fDdl" type="date">
-    <label>状态</label>
+    <label>Status</label>
     <select id="fStatus">
-      <option value="todo">未开始</option>
-      <option value="doing">进行中</option>
-      <option value="paused">暂停</option>
-      <option value="done">已完成</option>
+      <option value="todo">To Do</option>
+      <option value="doing">In Progress</option>
+      <option value="paused">Paused</option>
+      <option value="done">Done</option>
     </select>
-    <label>进度 %</label><input id="fProg" type="number" min="0" max="100" step="5">
+    <label>Progress %</label><input id="fProg" type="number" min="0" max="100" step="5">
   </div>
   <div class="dlg-foot">
-    <button id="fDel" style="color:#d1242f">删除</button>
+    <button id="fDel" style="color:#d1242f">Delete</button>
     <div class="right-btns">
-      <button id="fCancel">取消</button>
-      <button class="primary" id="fSave">保存</button>
+      <button id="fCancel">Cancel</button>
+      <button class="primary" id="fSave">Save</button>
     </div>
   </div>
 </dialog>
 
 <dialog id="dlgLabels" style="width:460px">
-  <div class="dlg-head">自定义列名 / Custom Column Names</div>
+  <div class="dlg-head">Column Names</div>
   <div class="dlg-body" id="labelFields"></div>
   <div class="dlg-foot">
     <div class="right-btns" style="margin-left:auto">
-      <button id="lEnglish">English 预设</button>
-      <button id="lReset">恢复默认</button>
-      <button id="lCancel">取消</button>
-      <button class="primary" id="lSave">保存</button>
+      <button id="lChinese">中文预设</button>
+      <button id="lReset">Reset</button>
+      <button id="lCancel">Cancel</button>
+      <button class="primary" id="lSave">Save</button>
     </div>
   </div>
 </dialog>
@@ -174,8 +174,8 @@ const DAY=86400000, DAY_W=()=>+document.getElementById('selZoom').value;
 const $=s=>document.getElementById(s);
 const PALETTE=['#0969da','#8250df','#1a7f37','#bf8700','#cf222e','#0e7c86','#d4a017','#57606a'];
 
-const DEFAULT_LABELS={name:'任务',who:'指派人',est:'起 → 预计完成',ddl:'Deadline',prog:'进度'};
-const EN_LABELS={name:'Task',who:'Assigned By',est:'Start → Est. Finish',ddl:'Deadline',prog:'Progress'};
+const DEFAULT_LABELS={name:'Task',who:'Assigned By',est:'Start → Est. Finish',ddl:'Deadline',prog:'Progress'};
+const CN_LABELS={name:'任务',who:'指派人',est:'起 → 预计完成',ddl:'截止时间',prog:'进度'};
 let LABELS=Object.assign({},DEFAULT_LABELS);
 
 const snapEl=document.querySelector('script[type="application/json"][id="snapshot-data"]');
@@ -189,7 +189,7 @@ if(SNAPSHOT){
   viewStart=snap.viewStart||null;
   document.querySelectorAll('.edit-only').forEach(e=>e.style.display='none');
   $('snapBanner').style.display='';
-  $('snapBanner').textContent='只读快照 · 生成于 '+(snap.generated||'');
+  $('snapBanner').textContent='Read-only snapshot · generated '+(snap.generated||'');
 }else{
   tasks=JSON.parse(localStorage.getItem('gantt-tasks')||'null')||sample();
   viewStart=JSON.parse(localStorage.getItem('gantt-view')||'null');
@@ -201,11 +201,11 @@ viewStart=parseISO(viewStart);
 function sample(){
   const t=today(),d=o=>fmt(addDays(t,o));
   return [
-    {id:1,name:'整理 Q3 数据报告',who:'王磊',start:d(-2),est:3,ddl:d(6),status:'doing',prog:60,content:'需要财务数据'},
-    {id:2,name:'客户演示 Demo 准备',who:'陈静',start:d(1),est:2,ddl:d(4),status:'todo',prog:0,content:''},
-    {id:3,name:'修复线上 Bug #4821',who:'刘洋',start:d(0),est:1,ddl:d(2),status:'doing',prog:30,content:'优先级高'},
-    {id:4,name:'代码评审 + 文档更新',who:'陈静',start:d(4),estEnd:d(6),ddl:d(9),status:'todo',prog:0,content:''},
-    {id:5,name:'新人培训材料',who:'王磊',start:d(7),est:3,ddl:d(12),status:'todo',prog:0,content:''},
+    {id:1,name:'Q3 data report',who:'Alex Wong',start:d(-2),est:3,ddl:d(6),status:'doing',prog:60,content:'Needs finance input'},
+    {id:2,name:'Client demo prep',who:'Jing Chen',start:d(1),est:2,ddl:d(4),status:'todo',prog:0,content:''},
+    {id:3,name:'Fix prod bug #4821',who:'Yang Liu',start:d(0),est:1,ddl:d(2),status:'doing',prog:30,content:'High priority'},
+    {id:4,name:'Code review + docs',who:'Jing Chen',start:d(4),estEnd:d(6),ddl:d(9),status:'todo',prog:0,content:''},
+    {id:5,name:'Onboarding material',who:'Alex Wong',start:d(7),est:3,ddl:d(12),status:'todo',prog:0,content:''},
   ];
 }
 
@@ -264,7 +264,7 @@ function render(){
     lh+=`<div class="lrow task ${t.status}" data-id="${t.id}">
       <div class="cell c-name" title="${esc(sub)}"><div>${esc(t.name)}</div>${sub?`<small>${esc(sub)}</small>`:''}</div>
       <div class="cell c-who"><span style="background:${whoColor(t.who)}">${esc(t.who)}</span></div>
-      <div class="cell c-est"><b>${fmtShort(parseISO(t.start))} → ${fmtShort(fin)}</b><small>${t.estEnd?'':(t.est||1)+' 工作日'}</small></div>
+      <div class="cell c-est"><b>${fmtShort(parseISO(t.start))} → ${fmtShort(fin)}</b><small>${t.estEnd?'':(t.est||1)+' workdays'}</small></div>
       <div class="cell c-ddl ${over?'over':''}">${t.ddl?fmtShort(parseISO(t.ddl)):'—'}</div>
       <div class="cell c-prog">${t.status==='done'?'✓':t.prog+'%'}</div></div>`;
   }
@@ -281,19 +281,19 @@ function render(){
   }
   for(const s of monthSegs){
     const x=daysBetween(viewStart,s.start)*W, w=(daysBetween(s.start,s.end)+1)*W;
-    mrow+=`<div class="mlab" style="left:${x}px;width:${w}px">${s.start.getFullYear()}年${s.start.getMonth()+1}月</div>`;
+    mrow+=`<div class="mlab" style="left:${x}px;width:${w}px">${'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[s.start.getMonth()]} ${s.start.getFullYear()}</div>`;
   }
   // capacity per day = tasks active that day (not done)
   for(let i=0;i<nDays;i++){
     const d=addDays(viewStart,i),we=isWE(d),isT=+d===+today();
-    drow+=`<div class="dcell ${we?'we':''} ${isT?'today':''}" style="width:${W}px">${d.getDate()}<span class="wd">${'日一二三四五六'[d.getDay()]}</span></div>`;
+    drow+=`<div class="dcell ${we?'we':''} ${isT?'today':''}" style="width:${W}px">${d.getDate()}<span class="wd">${'SMTWTFS'[d.getDay()]}</span></div>`;
     let cnt=0,names=[];
     if(!we)for(const t of tasks){
       if(t.status==='done')continue;
       if(d>=parseISO(t.start)&&d<=estFinish(t)){cnt++;names.push(t.name)}
     }
     const cls=we?'we':(cnt===0?'cap0':cnt===1?'cap1':'cap2');
-    cap+=`<div class="capcell ${cls}" style="width:${W}px" title="${we?'周末':(names.join('&#10;')||'空闲')}">${we?'':(cnt===0?'空':cnt)}</div>`;
+    cap+=`<div class="capcell ${cls}" style="width:${W}px" title="${we?'Weekend':(names.join('&#10;')||'Free')}">${we?'':(cnt===0?'·':cnt)}</div>`;
   }
   let rh=`<div class="rhead"><div class="mrow" style="width:${totalW}px">${mrow}</div>
     <div class="drow" style="width:${totalW}px">${drow}</div>
@@ -321,14 +321,14 @@ function render(){
     }
     rh+=`<div class="trow" style="width:${totalW}px"><div class="tbg">${bg}</div>${bar}${dm}</div>`;
   }
-  if(!list.length)rh+=`<div class="empty">没有任务 — 点"＋ 新增任务"开始</div>`;
+  if(!list.length)rh+=`<div class="empty">No tasks — click "+ New Task" to start</div>`;
   rh+=`<div class="todayline" style="left:${daysBetween(viewStart,t0)*W+W/2}px"></div>`;
   $('right').innerHTML=rh;
 
   // assignee filter + legend
   const whos=[...new Set(tasks.map(t=>t.who))];
   const cur=$('selAssignee').value;
-  $('selAssignee').innerHTML='<option value="">全部指派人</option>'+whos.map(w=>`<option ${w===cur?'selected':''}>${esc(w)}</option>`).join('');
+  $('selAssignee').innerHTML='<option value="">All assignees</option>'+whos.map(w=>`<option ${w===cur?'selected':''}>${esc(w)}</option>`).join('');
   $('whoList').innerHTML=whos.map(w=>`<option value="${esc(w)}">`).join('');
   $('assigneeLegend').innerHTML=whos.map(w=>`<span class="lg"><i style="background:${whoColor(w)}"></i>${esc(w)}</span>`).join(' ');
 
@@ -346,7 +346,7 @@ let editId=null;
 function openDlg(id){
   editId=id;
   const t=id?tasks.find(x=>x.id===id):{name:'',who:'',start:fmt(today()),est:1,estEnd:'',ddl:fmt(addDays(today(),7)),status:'todo',prog:0,content:''};
-  $('dlgTitle').textContent=id?'编辑任务':'新增任务';
+  $('dlgTitle').textContent=id?'Edit Task':'New Task';
   $('fDel').style.visibility=id?'visible':'hidden';
   $('fName').value=t.name;$('fContent').value=t.content||t.note||'';$('fWho').value=t.who;
   $('fStart').value=t.start;$('fEstEnd').value=t.estEnd||'';$('fEst').value=t.est||1;
@@ -357,7 +357,7 @@ $('btnAdd').onclick=()=>openDlg(null);
 $('fCancel').onclick=()=>$('dlg').close();
 $('fSave').onclick=()=>{
   const t={
-    name:$('fName').value.trim()||'未命名任务',who:$('fWho').value.trim()||'未指定',
+    name:$('fName').value.trim()||'Untitled task',who:$('fWho').value.trim()||'Unassigned',
     start:$('fStart').value||fmt(today()),estEnd:$('fEstEnd').value,
     est:Math.max(.5,+$('fEst').value||1),
     ddl:$('fDdl').value,status:$('fStatus').value,
@@ -389,33 +389,134 @@ $('btnImport').onclick=()=>$('fileInput').click();
 $('fileInput').onchange=e=>{
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
-  r.onload=()=>{try{tasks=JSON.parse(r.result);save();render()}catch{alert('JSON 格式不对')}};
+  r.onload=()=>{try{tasks=JSON.parse(r.result);save();render()}catch{alert('Invalid JSON')}};
   r.readAsText(f);e.target.value='';
 };
 
-const STATUS_NAME={todo:'未开始',doing:'进行中',paused:'暂停',done:'已完成'};
+const STATUS_NAME={todo:'To Do',doing:'In Progress',paused:'Paused',done:'Done'};
+
+// --- minimal real-.xlsx writer: ZIP (stored) + OOXML parts ---
+function crc32(u8){
+  if(!crc32.t){crc32.t=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;crc32.t[n]=c>>>0}}
+  let c=0xFFFFFFFF;for(const b of u8)c=crc32.t[(c^b)&0xFF]^(c>>>8);return(c^0xFFFFFFFF)>>>0;
+}
+function xlsxBlob(files){
+  const enc=new TextEncoder(),out=[],central=[];let off=0;
+  for(const f of files){
+    const name=enc.encode(f.name),data=enc.encode(f.data),crc=crc32(data);
+    const lh=new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true);lh.setUint16(4,20,true);lh.setUint32(14,crc,true);
+    lh.setUint32(18,data.length,true);lh.setUint32(22,data.length,true);lh.setUint16(26,name.length,true);
+    out.push(new Uint8Array(lh.buffer),name,data);
+    const ch=new DataView(new ArrayBuffer(46));
+    ch.setUint32(0,0x02014b50,true);ch.setUint16(4,20,true);ch.setUint16(6,20,true);
+    ch.setUint32(16,crc,true);ch.setUint32(20,data.length,true);ch.setUint32(24,data.length,true);
+    ch.setUint16(28,name.length,true);ch.setUint32(42,off,true);
+    central.push([new Uint8Array(ch.buffer),name]);off+=30+name.length+data.length;
+  }
+  const cdStart=off;const cdLen=central.reduce((a,[b,n])=>a+b.length+n.length,0);
+  const eo=new DataView(new ArrayBuffer(22));
+  eo.setUint32(0,0x06054b50,true);eo.setUint16(8,central.length,true);eo.setUint16(10,central.length,true);
+  eo.setUint32(12,cdLen,true);eo.setUint32(16,cdStart,true);
+  return new Blob([...out,...central.flat(),new Uint8Array(eo.buffer)],
+    {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+const COLREF=i=>{let s='';i++;while(i>0){s=String.fromCharCode(65+(i-1)%26)+s;i=(i-1)/26|0}return s};
+
 $('btnExcel').onclick=()=>{
   const list=visible().sort((a,b)=>a.start<b.start?-1:1);
-  const nDays=range(list);
-  let h=`<tr><th>${esc(LABELS.name)}</th><th>${esc(LABELS.who)}</th><th>Content</th><th>Start</th><th>Est. Finish</th><th>${esc(LABELS.ddl)}</th><th>Status</th><th>${esc(LABELS.prog)}</th>`;
-  for(let i=0;i<nDays;i++){const d=addDays(viewStart,i);h+=`<th style="width:20px">${d.getMonth()+1}/${d.getDate()}</th>`}
-  h+='</tr>';
-  for(const t of list){
-    const f=estFinish(t),s=parseISO(t.start);
-    h+=`<tr><td>${esc(t.name)}</td><td>${esc(t.who)}</td><td>${esc(t.content||t.note||'')}</td><td>${t.start}</td><td>${fmt(f)}</td><td>${t.ddl||''}</td><td>${STATUS_NAME[t.status]||t.status}</td><td>${t.prog}%</td>`;
-    for(let i=0;i<nDays;i++){
-      const d=addDays(viewStart,i);
-      let bg='#ffffff',txt='';
-      if(isWE(d))bg='#eeeeee';
-      if(!isWE(d)&&d>=s&&d<=f)bg=whoColor(t.who);
-      if(t.ddl&&fmt(d)===t.ddl){bg='#d1242f';txt='◆'}
-      h+=`<td bgcolor="${bg}" style="background:${bg};color:#ffffff;text-align:center">${txt}</td>`;
-    }
-    h+='</tr>';
-  }
-  const html='﻿<html><head><meta charset="utf-8"></head><body><table border="1" cellspacing="0">'+h+'</table></body></html>';
+  const nDays=range(list),NCOL=8+nDays,LASTROW=list.length+3;
+  const colors=[...new Set(list.map(t=>whoColor(t.who)))];
 
-  download('排期-'+fmt(today())+'.xls',html,'application/vnd.ms-excel');
+  const fonts=['<font><sz val="11"/><name val="Calibri"/></font>',
+    '<font><b/><sz val="11"/><name val="Calibri"/></font>',
+    '<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>',
+    '<font><b/><sz val="14"/><name val="Calibri"/></font>'];
+  const hex=c=>c.replace('#','').toUpperCase();
+  const fills=['<fill><patternFill/></fill>','<fill><patternFill patternType="gray125"/></fill>',
+    ...['D9E1F2','EEEEEE','EAF6EC','FFF2CC','F8C8C8','D1242F',...colors.map(hex)].map(c=>
+    `<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/><bgColor indexed="64"/></patternFill></fill>`)];
+  const F={hdr:2,we:3,cap0:4,cap1:5,cap2:6,ddl:7,bar:c=>8+colors.indexOf(c)};
+  const thin='<left style="thin"><color rgb="FFBFBFBF"/></left><right style="thin"><color rgb="FFBFBFBF"/></right><top style="thin"><color rgb="FFBFBFBF"/></top><bottom style="thin"><color rgb="FFBFBFBF"/></bottom>';
+  const xf=(font,fill,numFmt,align)=>`<xf numFmtId="${numFmt||0}" fontId="${font||0}" fillId="${fill||0}" borderId="1" xfId="0"${numFmt?' applyNumberFormat="1"':''}${font?' applyFont="1"':''}${fill?' applyFill="1"':''} applyBorder="1">${align?`<alignment horizontal="${align}"/>`:''}</xf>`;
+  const S={def:0,title:1,hdr:2,txt:3,ctr:4,pct:5,we:6,ddl:7,cap0:8,cap1:9,cap2:10,who:c=>11+colors.indexOf(c),bar:c=>11+colors.length+colors.indexOf(c)};
+  const xfs=[xf(0,0,0),xf(3,0,0),xf(1,F.hdr,0,'center'),xf(0,0,0),xf(0,0,0,'center'),xf(0,0,9,'center'),
+    xf(0,F.we,0),xf(2,F.ddl,0,'center'),xf(0,F.cap0,0,'center'),xf(0,F.cap1,0,'center'),xf(0,F.cap2,0,'center'),
+    ...colors.map(c=>xf(2,F.bar(c),0,'center')),...colors.map(c=>xf(0,F.bar(c),0))];
+  const stylesXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<fonts count="${fonts.length}">${fonts.join('')}</fonts>
+<fills count="${fills.length}">${fills.join('')}</fills>
+<borders count="2"><border/><border>${thin}</border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="${xfs.length}">${xfs.join('')}</cellXfs></styleSheet>`;
+
+  const cell=(r,c,s,inner,type)=>`<c r="${COLREF(c)}${r}" s="${s}"${type?` t="${type}"`:''}>${inner||''}</c>`;
+  const scell=(r,c,s,v)=>cell(r,c,s,`<is><t${/^\s|\s$/.test(v)?' xml:space="preserve"':''}>${esc(v)}</t></is>`,'inlineStr');
+  const MON='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
+  let rows='';
+  rows+=`<row r="1" ht="22" customHeight="1">${scell(1,0,S.title,'Workload Gantt — '+fmt(today()))}</row>`;
+  const heads=[LABELS.name,LABELS.who,'Content','Start','Est. Finish',LABELS.ddl,'Status',LABELS.prog];
+  rows+='<row r="2" ht="18" customHeight="1">'+heads.map((v,i)=>scell(2,i,S.hdr,v)).join('')+
+    Array.from({length:nDays},(_,i)=>{const d=addDays(viewStart,i);return scell(2,8+i,S.hdr,MON[d.getMonth()]+' '+d.getDate())}).join('')+'</row>';
+  list.forEach((t,ri)=>{
+    const r=ri+3,f=estFinish(t),s=parseISO(t.start);
+    let row=scell(r,0,S.txt,t.name)+scell(r,1,S.who(whoColor(t.who)),t.who)+scell(r,2,S.txt,t.content||t.note||'')+
+      scell(r,3,S.ctr,t.start)+scell(r,4,S.ctr,fmt(f))+scell(r,5,S.ctr,t.ddl||'')+
+      scell(r,6,S.ctr,STATUS_NAME[t.status]||t.status)+cell(r,7,S.pct,`<v>${t.prog/100}</v>`);
+    for(let i=0;i<nDays;i++){
+      const d=addDays(viewStart,i),c=8+i;
+      if(t.ddl&&fmt(d)===t.ddl)row+=scell(r,c,S.ddl,'◆');
+      else if(isWE(d))row+=cell(r,c,S.we);
+      else if(d>=s&&d<=f)row+=cell(r,c,S.bar(whoColor(t.who)));
+      else row+=cell(r,c,S.txt);
+    }
+    rows+=`<row r="${r}">${row}</row>`;
+  });
+  let lr=scell(LASTROW,0,S.hdr,'Daily Load')+Array.from({length:7},(_,i)=>scell(LASTROW,1+i,S.hdr,'')).join('');
+  for(let i=0;i<nDays;i++){
+    const d=addDays(viewStart,i);let cnt=0;
+    if(!isWE(d))for(const t of tasks){if(t.status!=='done'&&d>=parseISO(t.start)&&d<=estFinish(t))cnt++}
+    const st=isWE(d)?S.we:(cnt===0?S.cap0:cnt===1?S.cap1:S.cap2);
+    lr+=isWE(d)?cell(LASTROW,8+i,st):scell(LASTROW,8+i,st,cnt===0?'Free':String(cnt));
+  }
+  rows+=`<row r="${LASTROW}">${lr}</row>`;
+
+  const cols=[32,15,30,12,12,12,12,10].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')+
+    `<col min="9" max="${NCOL}" width="7" customWidth="1"/>`;
+  const sheetXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<sheetViews><sheetView workbookViewId="0"><pane xSplit="8" ySplit="2" topLeftCell="I3" activePane="bottomRight" state="frozen"/></sheetView></sheetViews>
+<cols>${cols}</cols><sheetData>${rows}</sheetData>
+<autoFilter ref="A2:H${list.length+2}"/>
+<mergeCells count="1"><mergeCell ref="A1:H1"/></mergeCells></worksheet>`;
+
+  const blob=xlsxBlob([
+    {name:'[Content_Types].xml',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`},
+    {name:'_rels/.rels',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`},
+    {name:'xl/workbook.xml',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheets><sheet name="Gantt" sheetId="1" r:id="rId1"/></sheets></workbook>`},
+    {name:'xl/_rels/workbook.xml.rels',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`},
+    {name:'xl/styles.xml',data:stylesXml},
+    {name:'xl/worksheets/sheet1.xml',data:sheetXml},
+  ]);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='Workload-Gantt-'+fmt(today())+'.xlsx';a.click();
 };
 
 // 导出只读快照: 序列化整个页面 + 注入数据, 重开后自动进入只读模式
@@ -429,8 +530,8 @@ $('btnSnap').onclick=()=>{
 };
 
 const LABEL_FIELDS=[
-  ['name','第1列 · 任务名'],['who','第2列 · 指派人'],['est','第3列 · 起止时间'],
-  ['ddl','第4列 · 截止时间'],['prog','第5列 · 进度']
+  ['name','Column 1 · Task'],['who','Column 2 · Assignee'],['est','Column 3 · Timeline'],
+  ['ddl','Column 4 · Deadline'],['prog','Column 5 · Progress']
 ];
 $('btnLabels').onclick=()=>{
   $('labelFields').innerHTML=LABEL_FIELDS.map(([k,d])=>`<label>${d}</label><input data-lk="${k}" value="${esc(LABELS[k])}">`).join('');
@@ -438,7 +539,7 @@ $('btnLabels').onclick=()=>{
 };
 $('lCancel').onclick=()=>$('dlgLabels').close();
 $('lReset').onclick=()=>{document.querySelectorAll('#labelFields input').forEach(i=>i.value=DEFAULT_LABELS[i.dataset.lk])};
-$('lEnglish').onclick=()=>{document.querySelectorAll('#labelFields input').forEach(i=>i.value=EN_LABELS[i.dataset.lk])};
+$('lChinese').onclick=()=>{document.querySelectorAll('#labelFields input').forEach(i=>i.value=CN_LABELS[i.dataset.lk])};
 $('lSave').onclick=()=>{
   document.querySelectorAll('#labelFields input').forEach(i=>LABELS[i.dataset.lk]=i.value.trim()||DEFAULT_LABELS[i.dataset.lk]);
   if(!SNAPSHOT)localStorage.setItem('gantt-labels',JSON.stringify(LABELS));
