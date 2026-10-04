@@ -6,7 +6,6 @@
 <style>
 :root{
   --row-h:40px;
-  --lw:1;
   --m-head:22px;
   --d-head:26px;
   --cap-h:18px;
@@ -37,27 +36,34 @@ button.primary:hover{background:#0757b3}
 .right{min-width:100%}
 .lrow{display:flex;border-bottom:1px solid var(--border);height:var(--row-h);align-items:stretch}
 .lhead{height:36px;background:#f2f4f7;font-weight:600;color:var(--muted);font-size:12px}
-.cell{padding:6px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-right:1px solid var(--border);display:flex;align-items:center}
-.c-name{width:calc(230px*var(--lw));flex-direction:column;align-items:flex-start;justify-content:center;line-height:1.2}
-.c-name small{color:var(--muted);font-weight:400}
-.c-who{width:calc(92px*var(--lw));justify-content:center}
-.c-est{width:calc(140px*var(--lw));flex-direction:column;align-items:flex-start;justify-content:center;line-height:1.2;font-size:11px}
-.c-est b{font-size:12px}
-.c-ddl{width:calc(92px*var(--lw));justify-content:center;font-size:12px}
-.c-ddl.over{color:#d1242f;font-weight:600}
-.c-prog{width:calc(64px*var(--lw));justify-content:center;font-size:11px}
-.c-status{width:calc(118px*var(--lw));justify-content:center}
-.c-status select{font:inherit;font-size:11px;color:#fff;border:none;border-radius:10px;padding:2px 6px;cursor:pointer;appearance:auto}
-.st-todo{background:#57606a}
-.st-doing{background:#0969da}
-.st-paused{background:#bf8700}
-.st-done{background:#1a7f37}
-#rh{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:col-resize;z-index:20}
-#rh:hover,#rh.on{background:#0969da33}
-.c-who span{display:inline-block;padding:1px 8px;border-radius:10px;color:#fff;font-size:11px}
+.cell{flex:none;position:relative;padding:6px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-right:1px solid var(--border);display:flex;align-items:center}
+.cell.ctr{justify-content:center}
+.cell.two{flex-direction:column;align-items:flex-start;justify-content:center;line-height:1.2;font-size:11px}
+.cell.two b{font-size:12px}
+.cell.muted{color:var(--muted);font-size:12px}
+.cell.over{color:#d1242f;font-weight:600}
+.lhead .cell{user-select:none}
+.grip{position:absolute;right:0;top:0;width:7px;height:100%;cursor:col-resize}
+.grip:hover,.grip.on{background:#0969da55}
+.cell select{font:inherit;font-size:11px;border:1px solid var(--border);border-radius:10px;padding:2px 6px;cursor:pointer;background:#fff;max-width:100%}
+.cell select.stsel{color:#fff;border:none}
+.st-todo{background:#57606a!important}
+.st-doing{background:#0969da!important}
+.st-paused{background:#bf8700!important}
+.st-done{background:#1a7f37!important}
+.pill{display:inline-block;padding:1px 8px;border-radius:10px;color:#fff;font-size:11px}
 .lrow.task{cursor:pointer}
 .lrow.task:hover{background:#f6f8fa}
-.lrow.task.done .c-name{color:var(--muted);text-decoration:line-through}
+.lrow.task.done .k-name{color:var(--muted);text-decoration:line-through}
+#cfields{display:contents}
+.colrow{display:grid;grid-template-columns:52px 24px 1fr 130px 30px;gap:6px;align-items:center;padding:4px 0}
+.colrow input[type=text],.colrow select{font:inherit;padding:4px 6px;border:1px solid var(--border);border-radius:6px;width:100%}
+.colrow .opts{grid-column:3/6;font-size:11px}
+.colrow button{padding:2px 6px;font:inherit;border:1px solid var(--border);border-radius:5px;background:#fff;cursor:pointer}
+.colrow .tag{font-size:11px;color:var(--muted)}
+#colList{max-height:52vh;overflow:auto;padding:8px 18px}
+.addrow{display:flex;gap:8px;padding:8px 18px;border-top:1px solid var(--border);align-items:center}
+.addrow input,.addrow select{font:inherit;padding:4px 6px;border:1px solid var(--border);border-radius:6px}
 .right{flex:none;position:relative}
 .rhead{position:sticky;top:0;z-index:7;background:#fff}
 .mrow{height:var(--m-head);display:flex;border-bottom:1px solid var(--border);position:relative}
@@ -140,21 +146,22 @@ footer{padding:6px 16px;background:#fff;border-top:1px solid var(--border);font-
 <dialog id="dlg">
   <div class="dlg-head" id="dlgTitle">Edit Task</div>
   <div class="dlg-body">
-    <label>Task Name</label><input id="fName">
-    <label>Content</label><textarea id="fContent" rows="2"></textarea>
-    <label>Assigned By</label><input id="fWho" list="whoList"><datalist id="whoList"></datalist>
+    <label data-col="name">Task Name</label><input id="fName">
+    <label data-col="content">Content</label><textarea id="fContent" rows="2"></textarea>
+    <label data-col="who">Assigned By</label><input id="fWho" list="whoList"><datalist id="whoList"></datalist>
     <label>Start</label><input id="fStart" type="date">
     <label>Est. Finish</label><input id="fEstEnd" type="date" title="Pick the estimated finish date directly">
     <label>or Est. Days</label><input id="fEst" type="number" min="0.5" step="0.5" title="Workdays, used when Est. Finish is empty">
-    <label>Deadline</label><input id="fDdl" type="date">
-    <label>Status</label>
+    <label data-col="ddl">Deadline</label><input id="fDdl" type="date">
+    <label data-col="status">Status</label>
     <select id="fStatus">
       <option value="todo">Not Started</option>
       <option value="doing">In Progress</option>
       <option value="paused">Paused</option>
       <option value="done">Done</option>
     </select>
-    <label>Progress %</label><input id="fProg" type="number" min="0" max="100" step="5">
+    <label data-col="prog">Progress %</label><input id="fProg" type="number" min="0" max="100" step="5">
+    <div id="cfields"></div>
   </div>
   <div class="dlg-foot">
     <button id="fDel" style="color:#d1242f">Delete</button>
@@ -165,13 +172,23 @@ footer{padding:6px 16px;background:#fff;border-top:1px solid var(--border);font-
   </div>
 </dialog>
 
-<dialog id="dlgLabels" style="width:460px">
-  <div class="dlg-head">Column Names</div>
-  <div class="dlg-body" id="labelFields"></div>
+<dialog id="dlgLabels" style="width:620px">
+  <div class="dlg-head">Manage Columns</div>
+  <div id="colList"></div>
+  <div class="addrow">
+    <input id="newColName" placeholder="New column name, e.g. Priority" style="flex:1">
+    <select id="newColType">
+      <option value="text">Text</option>
+      <option value="dropdown">Dropdown</option>
+      <option value="date">Date</option>
+      <option value="number">Number</option>
+    </select>
+    <button id="lAdd" class="primary">+ Add column</button>
+  </div>
   <div class="dlg-foot">
-    <div class="right-btns" style="margin-left:auto">
+    <button id="lReset" style="color:#d1242f">Reset to default</button>
+    <div class="right-btns">
       <button id="lChinese">中文预设</button>
-      <button id="lReset">Reset</button>
       <button id="lCancel">Cancel</button>
       <button class="primary" id="lSave">Save</button>
     </div>
@@ -184,9 +201,27 @@ const DAY=86400000, DAY_W=()=>+document.getElementById('selZoom').value;
 const $=s=>document.getElementById(s);
 const PALETTE=['#0969da','#8250df','#1a7f37','#bf8700','#cf222e','#0e7c86','#d4a017','#57606a'];
 
-const DEFAULT_LABELS={name:'Task',who:'Assigned By',est:'Start → Est. Finish',ddl:'Deadline',status:'Status',prog:'Progress'};
-const CN_LABELS={name:'任务',who:'指派人',est:'起 → 预计完成',ddl:'截止时间',status:'状态',prog:'进度'};
-let LABELS=Object.assign({},DEFAULT_LABELS);
+const EN_LABELS={name:'Task',content:'Content',who:'Assigned By',est:'Start → Est. Finish',ddl:'Deadline',status:'Status',prog:'Progress'};
+const CN_LABELS={name:'任务',content:'任务内容',who:'指派人',est:'起 → 预计完成',ddl:'截止时间',status:'状态',prog:'进度'};
+const BUILTIN_W={name:200,content:200,who:110,est:150,ddl:92,status:124,prog:72};
+const defaultCols=()=>['name','content','who','est','ddl','status','prog'].map(id=>({id,label:EN_LABELS[id],builtin:true,visible:true,w:BUILTIN_W[id]}));
+let COLS=defaultCols();
+const colById=id=>COLS.find(c=>c.id===id);
+const L=id=>(colById(id)||{label:EN_LABELS[id]||id}).label;
+const visCols=()=>COLS.filter(c=>c.visible);
+function normCols(saved){
+  const out=[];const seen=new Set();
+  for(const s of saved||[]){
+    if(!s||!s.id||seen.has(s.id))continue;
+    if(s.builtin&&!EN_LABELS[s.id])continue;
+    seen.add(s.id);
+    out.push({id:s.id,label:s.label||EN_LABELS[s.id]||'Column',builtin:!!s.builtin,visible:s.visible!==false,w:s.w||BUILTIN_W[s.id]||130,
+      ...(s.builtin?{}:{type:s.type||'text',options:s.options||[]})});
+  }
+  for(const c of defaultCols())if(!seen.has(c.id))out.push(c);
+  return out;
+}
+function saveCols(){if(!SNAPSHOT)localStorage.setItem('gantt-cols',JSON.stringify(COLS))}
 
 const snapEl=document.querySelector('script[type="application/json"][id="snapshot-data"]');
 const SNAPSHOT=!!snapEl;
@@ -195,7 +230,7 @@ let tasks, viewStart;
 if(SNAPSHOT){
   const snap=JSON.parse(snapEl.textContent);
   tasks=snap.tasks||snap;
-  if(snap.labels)Object.assign(LABELS,snap.labels);
+  if(snap.cols)COLS=normCols(snap.cols);
   viewStart=snap.viewStart||null;
   document.querySelectorAll('.edit-only').forEach(e=>e.style.display='none');
   $('snapBanner').style.display='';
@@ -203,7 +238,12 @@ if(SNAPSHOT){
 }else{
   tasks=JSON.parse(localStorage.getItem('gantt-tasks')||'null')||sample();
   viewStart=JSON.parse(localStorage.getItem('gantt-view')||'null');
-  Object.assign(LABELS,JSON.parse(localStorage.getItem('gantt-labels')||'{}'));
+  const sc=JSON.parse(localStorage.getItem('gantt-cols')||'null');
+  if(sc)COLS=normCols(sc);
+  else{
+    const old=JSON.parse(localStorage.getItem('gantt-labels')||'{}');
+    COLS=defaultCols();COLS.forEach(c=>{if(old[c.id])c.label=old[c.id]});
+  }
 }
 if(!viewStart)viewStart=fmt(addDays(today(),-3));
 viewStart=parseISO(viewStart);
@@ -259,30 +299,33 @@ function range(list){
   return daysBetween(viewStart,end);
 }
 
+const STATUS_OPTS=[['todo','Not Started'],['doing','In Progress'],['paused','Paused'],['done','Done']];
+function cellHTML(c,t){
+  const w=`data-cid="${c.id}" style="width:${c.w}px"`;
+  switch(c.id){
+    case 'name':return `<div class="cell k-name" ${w} title="${esc(t.name)}">${esc(t.name)}</div>`;
+    case 'content':{const s=t.content||t.note||'';return `<div class="cell muted" ${w} title="${esc(s)}">${esc(s)}</div>`}
+    case 'who':return `<div class="cell ctr" ${w}><span class="pill" style="background:${whoColor(t.who)}">${esc(t.who)}</span></div>`;
+    case 'est':return `<div class="cell two" ${w}><b>${fmtShort(parseISO(t.start))} → ${fmtShort(estFinish(t))}</b><span>${t.estEnd?'':(t.est||1)+' workdays'}</span></div>`;
+    case 'ddl':{const over=t.ddl&&estFinish(t)>parseISO(t.ddl);return `<div class="cell ctr ${over?'over':''}" ${w}>${t.ddl?fmtShort(parseISO(t.ddl)):'—'}</div>`}
+    case 'status':return `<div class="cell ctr" ${w}><select class="stsel st-${t.status}" data-sid="${t.id}" ${SNAPSHOT?'disabled':''}>${STATUS_OPTS.map(([v,n])=>`<option value="${v}" ${t.status===v?'selected':''}>${n}</option>`).join('')}</select></div>`;
+    case 'prog':return `<div class="cell ctr" ${w}>${t.status==='done'?'✓':t.prog+'%'}</div>`;
+  }
+  const v=(t.cv&&t.cv[c.id])??'';
+  if(c.type==='dropdown')return `<div class="cell ctr" ${w}><select data-sid="${t.id}" data-cv="${c.id}" ${SNAPSHOT?'disabled':''}><option value=""></option>${(c.options||[]).map(o=>`<option ${o===v?'selected':''}>${esc(o)}</option>`).join('')}</select></div>`;
+  const shown=c.type==='date'&&v?fmtShort(parseISO(v)):v;
+  return `<div class="cell ${c.type==='text'?'':'ctr'}" ${w} title="${esc(v)}">${esc(shown)}</div>`;
+}
+
 function render(){
   const list=visible().sort((a,b)=>a.start<b.start?-1:1);
   const nDays=range(list), W=DAY_W(), totalW=nDays*W;
 
   // left header + rows
-  let lh=`<div class="lrow lhead">
-    <div class="cell c-name">${esc(LABELS.name)}</div><div class="cell c-who">${esc(LABELS.who)}</div>
-    <div class="cell c-est">${esc(LABELS.est)}</div><div class="cell c-ddl">${esc(LABELS.ddl)}</div>
-    <div class="cell c-status">${esc(LABELS.status)}</div><div class="cell c-prog">${esc(LABELS.prog)}</div></div>`;
+  const vc=visCols();
+  let lh=`<div class="lrow lhead">${vc.map(c=>`<div class="cell ctr" data-cid="${c.id}" style="width:${c.w}px">${esc(c.label)}${SNAPSHOT?'':`<span class="grip" data-grip="${c.id}"></span>`}</div>`).join('')}</div>`;
   for(const t of list){
-    const fin=estFinish(t),over=t.ddl&&fin>parseISO(t.ddl);
-    const sub=t.content||t.note||'';
-    lh+=`<div class="lrow task ${t.status}" data-id="${t.id}">
-      <div class="cell c-name" title="${esc(sub)}"><div>${esc(t.name)}</div>${sub?`<small>${esc(sub)}</small>`:''}</div>
-      <div class="cell c-who"><span style="background:${whoColor(t.who)}">${esc(t.who)}</span></div>
-      <div class="cell c-est"><b>${fmtShort(parseISO(t.start))} → ${fmtShort(fin)}</b><small>${t.estEnd?'':(t.est||1)+' workdays'}</small></div>
-      <div class="cell c-ddl ${over?'over':''}">${t.ddl?fmtShort(parseISO(t.ddl)):'—'}</div>
-      <div class="cell c-status"><select class="st-${t.status}" data-sid="${t.id}" ${SNAPSHOT?'disabled':''}>
-        <option value="todo" ${t.status==='todo'?'selected':''}>Not Started</option>
-        <option value="doing" ${t.status==='doing'?'selected':''}>In Progress</option>
-        <option value="paused" ${t.status==='paused'?'selected':''}>Paused</option>
-        <option value="done" ${t.status==='done'?'selected':''}>Done</option>
-      </select></div>
-      <div class="cell c-prog">${t.status==='done'?'✓':t.prog+'%'}</div></div>`;
+    lh+=`<div class="lrow task ${t.status}" data-id="${t.id}">${vc.map(c=>cellHTML(c,t)).join('')}</div>`;
   }
   $('left').innerHTML=lh;
 
@@ -325,7 +368,8 @@ function render(){
     if(x<0){w+=x;x=0}
     const col=whoColor(t.who);
     const over=t.ddl&&f>parseISO(t.ddl);
-    const tip=`${esc(t.name)}&#10;${LABELS.who}: ${esc(t.who)}&#10;${t.start} → ${fmt(f)}&#10;${LABELS.ddl}: ${t.ddl||'—'}&#10;${LABELS.prog}: ${t.prog}%${(t.content||t.note)?'&#10;'+esc(t.content||t.note):''}`;
+    const tip=[t.name,`${L('who')}: ${t.who}`,`${t.start} → ${fmt(f)}`,`${L('ddl')}: ${t.ddl||'—'}`,`${L('prog')}: ${t.prog}%`,
+      ...COLS.filter(c=>!c.builtin&&t.cv&&t.cv[c.id]).map(c=>`${c.label}: ${t.cv[c.id]}`),t.content||t.note||''].filter(Boolean).map(esc).join('&#10;');
     let bar=`<div class="bar ${t.status} ${over?'over-ddl':''}" data-id="${t.id}"
       style="left:${x}px;width:${Math.max(w,W*.6)}px;background:${col}"
       title="${tip}">
@@ -347,21 +391,29 @@ function render(){
   $('selAssignee').innerHTML='<option value="">All assignees</option>'+whos.map(w=>`<option ${w===cur?'selected':''}>${esc(w)}</option>`).join('');
   $('whoList').innerHTML=whos.map(w=>`<option value="${esc(w)}">`).join('');
   $('assigneeLegend').innerHTML=whos.map(w=>`<span class="lg"><i style="background:${whoColor(w)}"></i>${esc(w)}</span>`).join(' ');
-  $('left').appendChild(resizer);
 
   // row interactions
   if(!SNAPSHOT){
     document.querySelectorAll('.lrow.task,.bar').forEach(el=>
       el.addEventListener('click',()=>openDlg(+el.dataset.id)));
-    document.querySelectorAll('.c-status select').forEach(sel=>{
+    document.querySelectorAll('.lrow.task select').forEach(sel=>{
       sel.addEventListener('click',e=>e.stopPropagation());
       sel.addEventListener('change',()=>{
         const t=tasks.find(x=>x.id===+sel.dataset.sid);
         if(!t)return;
-        t.status=sel.value;if(t.status==='done')t.prog=100;
+        if(sel.dataset.cv){(t.cv=t.cv||{})[sel.dataset.cv]=sel.value}
+        else{t.status=sel.value;if(t.status==='done')t.prog=100}
         save();render();
       });
     });
+    document.querySelectorAll('.grip').forEach(g=>g.addEventListener('mousedown',e=>{
+      e.preventDefault();e.stopPropagation();g.classList.add('on');
+      const c=colById(g.dataset.grip),x0=e.clientX,w0=c.w;
+      const mv=ev=>{c.w=Math.max(40,w0+ev.clientX-x0);
+        document.querySelectorAll(`[data-cid="${c.id}"]`).forEach(el=>el.style.width=c.w+'px')};
+      const up=()=>{g.classList.remove('on');saveCols();removeEventListener('mousemove',mv);removeEventListener('mouseup',up)};
+      addEventListener('mousemove',mv);addEventListener('mouseup',up);
+    }));
   }
 }
 
@@ -377,6 +429,13 @@ function openDlg(id){
   $('fName').value=t.name;$('fContent').value=t.content||t.note||'';$('fWho').value=t.who;
   $('fStart').value=t.start;$('fEstEnd').value=t.estEnd||'';$('fEst').value=t.est||1;
   $('fDdl').value=t.ddl||'';$('fStatus').value=t.status;$('fProg').value=t.prog;
+  document.querySelectorAll('#dlg label[data-col]').forEach(l=>l.textContent=L(l.dataset.col));
+  $('cfields').innerHTML=COLS.filter(c=>!c.builtin).map(c=>{
+    const v=(t.cv&&t.cv[c.id])??'';
+    const inp=c.type==='dropdown'?`<select id="cf_${c.id}"><option value=""></option>${(c.options||[]).map(o=>`<option ${o===v?'selected':''}>${esc(o)}</option>`).join('')}</select>`
+      :`<input id="cf_${c.id}" type="${c.type==='number'?'number':c.type==='date'?'date':'text'}" value="${esc(v)}">`;
+    return `<label>${esc(c.label)}</label>${inp}`;
+  }).join('');
   $('dlg').showModal();
 }
 $('btnAdd').onclick=()=>openDlg(null);
@@ -389,6 +448,9 @@ $('fSave').onclick=()=>{
     ddl:$('fDdl').value,status:$('fStatus').value,
     prog:Math.min(100,Math.max(0,+$('fProg').value||0)),content:$('fContent').value.trim()
   };
+  const old=editId?tasks.find(x=>x.id===editId):null;
+  t.cv=Object.assign({},old&&old.cv);
+  COLS.filter(c=>!c.builtin).forEach(c=>{const el=$('cf_'+c.id);if(el)t.cv[c.id]=el.value});
   if(t.status==='done')t.prog=100;
   if(editId)Object.assign(tasks.find(x=>x.id===editId),t);
   else{t.id=Math.max(0,...tasks.map(x=>x.id))+1;tasks.push(t)}
@@ -410,12 +472,18 @@ function download(name,content,type){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();
 }
-$('btnExport').onclick=()=>download('tasks.json',JSON.stringify(tasks,null,2),'application/json');
+$('btnExport').onclick=()=>download('tasks.json',JSON.stringify({tasks,cols:COLS},null,2),'application/json');
 $('btnImport').onclick=()=>$('fileInput').click();
 $('fileInput').onchange=e=>{
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
-  r.onload=()=>{try{tasks=JSON.parse(r.result);save();render()}catch{alert('Invalid JSON')}};
+  r.onload=()=>{try{
+    const j=JSON.parse(r.result);
+    tasks=Array.isArray(j)?j:j.tasks;
+    if(!Array.isArray(tasks))throw 0;
+    if(j.cols){COLS=normCols(j.cols);saveCols()}
+    save();render();
+  }catch{alert('Invalid JSON')}};
   r.readAsText(f);e.target.value='';
 };
 
@@ -451,7 +519,8 @@ const COLREF=i=>{let s='';i++;while(i>0){s=String.fromCharCode(65+(i-1)%26)+s;i=
 
 $('btnExcel').onclick=()=>{
   const list=visible().sort((a,b)=>a.start<b.start?-1:1);
-  const nDays=range(list),NCOL=8+nDays,LASTROW=list.length+3;
+  const vc=visCols(),NI=Math.max(1,vc.length);
+  const nDays=range(list),NCOL=NI+nDays,LASTROW=list.length+3;
   const colors=[...new Set(list.map(t=>whoColor(t.who)))];
 
   const fonts=['<font><sz val="11"/><name val="Calibri"/></font>',
@@ -482,16 +551,27 @@ $('btnExcel').onclick=()=>{
   const MON='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
   let rows='';
   rows+=`<row r="1" ht="22" customHeight="1">${scell(1,0,S.title,'Workload Gantt — '+fmt(today()))}</row>`;
-  const heads=[LABELS.name,LABELS.who,'Content','Start','Est. Finish',LABELS.ddl,'Status',LABELS.prog];
-  rows+='<row r="2" ht="18" customHeight="1">'+heads.map((v,i)=>scell(2,i,S.hdr,v)).join('')+
-    Array.from({length:nDays},(_,i)=>{const d=addDays(viewStart,i);return scell(2,8+i,S.hdr,MON[d.getMonth()]+' '+d.getDate())}).join('')+'</row>';
+  rows+='<row r="2" ht="18" customHeight="1">'+vc.map((c,i)=>scell(2,i,S.hdr,c.label)).join('')+
+    Array.from({length:nDays},(_,i)=>{const d=addDays(viewStart,i);return scell(2,NI+i,S.hdr,MON[d.getMonth()]+' '+d.getDate())}).join('')+'</row>';
+  const infoCell=(r,i,c,t,f)=>{
+    switch(c.id){
+      case 'name':return scell(r,i,S.txt,t.name);
+      case 'content':return scell(r,i,S.txt,t.content||t.note||'');
+      case 'who':return scell(r,i,S.who(whoColor(t.who)),t.who);
+      case 'est':return scell(r,i,S.ctr,t.start+' → '+fmt(f));
+      case 'ddl':return scell(r,i,S.ctr,t.ddl||'');
+      case 'status':return scell(r,i,S.ctr,STATUS_NAME[t.status]||t.status);
+      case 'prog':return cell(r,i,S.pct,`<v>${t.prog/100}</v>`);
+    }
+    const v=(t.cv&&t.cv[c.id])??'';
+    if(c.type==='number'&&v!==''&&!isNaN(+v))return cell(r,i,S.ctr,`<v>${+v}</v>`);
+    return scell(r,i,c.type==='text'?S.txt:S.ctr,String(v));
+  };
   list.forEach((t,ri)=>{
     const r=ri+3,f=estFinish(t),s=parseISO(t.start);
-    let row=scell(r,0,S.txt,t.name)+scell(r,1,S.who(whoColor(t.who)),t.who)+scell(r,2,S.txt,t.content||t.note||'')+
-      scell(r,3,S.ctr,t.start)+scell(r,4,S.ctr,fmt(f))+scell(r,5,S.ctr,t.ddl||'')+
-      scell(r,6,S.ctr,STATUS_NAME[t.status]||t.status)+cell(r,7,S.pct,`<v>${t.prog/100}</v>`);
+    let row=vc.map((c,i)=>infoCell(r,i,c,t,f)).join('');
     for(let i=0;i<nDays;i++){
-      const d=addDays(viewStart,i),c=8+i;
+      const d=addDays(viewStart,i),c=NI+i;
       if(t.ddl&&fmt(d)===t.ddl)row+=scell(r,c,S.ddl,'◆');
       else if(isWE(d))row+=cell(r,c,S.we);
       else if(d>=s&&d<=f)row+=cell(r,c,S.bar(whoColor(t.who)));
@@ -499,23 +579,25 @@ $('btnExcel').onclick=()=>{
     }
     rows+=`<row r="${r}">${row}</row>`;
   });
-  let lr=scell(LASTROW,0,S.hdr,'Daily Load')+Array.from({length:7},(_,i)=>scell(LASTROW,1+i,S.hdr,'')).join('');
+  let lr=scell(LASTROW,0,S.hdr,'Daily Load')+Array.from({length:NI-1},(_,i)=>scell(LASTROW,1+i,S.hdr,'')).join('');
   for(let i=0;i<nDays;i++){
     const d=addDays(viewStart,i);let cnt=0;
     if(!isWE(d))for(const t of tasks){if(t.status!=='done'&&d>=parseISO(t.start)&&d<=estFinish(t))cnt++}
     const st=isWE(d)?S.we:(cnt===0?S.cap0:cnt===1?S.cap1:S.cap2);
-    lr+=isWE(d)?cell(LASTROW,8+i,st):scell(LASTROW,8+i,st,cnt===0?'Free':String(cnt));
+    lr+=isWE(d)?cell(LASTROW,NI+i,st):scell(LASTROW,NI+i,st,cnt===0?'Free':String(cnt));
   }
   rows+=`<row r="${LASTROW}">${lr}</row>`;
 
-  const cols=[32,15,30,12,12,12,12,10].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')+
-    `<col min="9" max="${NCOL}" width="7" customWidth="1"/>`;
+  const widths=vc.length?vc.map(c=>Math.max(10,Math.round(c.w/7))):[20];
+  const cols=widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')+
+    `<col min="${NI+1}" max="${NCOL}" width="7" customWidth="1"/>`;
+  const lastInfo=COLREF(NI-1);
   const sheetXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<sheetViews><sheetView workbookViewId="0"><pane xSplit="8" ySplit="2" topLeftCell="I3" activePane="bottomRight" state="frozen"/></sheetView></sheetViews>
+<sheetViews><sheetView workbookViewId="0"><pane xSplit="${NI}" ySplit="2" topLeftCell="${COLREF(NI)}3" activePane="bottomRight" state="frozen"/></sheetView></sheetViews>
 <cols>${cols}</cols><sheetData>${rows}</sheetData>
-<autoFilter ref="A2:H${list.length+2}"/>
-<mergeCells count="1"><mergeCell ref="A1:H1"/></mergeCells></worksheet>`;
+<autoFilter ref="A2:${lastInfo}${list.length+2}"/>${NI>1?`
+<mergeCells count="1"><mergeCell ref="A1:${lastInfo}1"/></mergeCells>`:''}</worksheet>`;
 
   const blob=xlsxBlob([
     {name:'[Content_Types].xml',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -548,43 +630,58 @@ $('btnExcel').onclick=()=>{
 // 导出只读快照: 序列化整个页面 + 注入数据, 重开后自动进入只读模式
 $('btnSnap').onclick=()=>{
   $('dlg').close();
-  const data=JSON.stringify({tasks,generated:fmt(today()),labels:LABELS,viewStart:fmt(viewStart)}).replace(/<\//g,'<\\/');
+  const data=JSON.stringify({tasks,generated:fmt(today()),cols:COLS,viewStart:fmt(viewStart)}).replace(/<\//g,'<\\/');
   const inject=`<script type="application/json" id="snapshot-data">`+data+`<`+`/script>`;
   let html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
   html=html.replace('</head>',inject+'</head>');
   download('gantt-snapshot-'+fmt(today())+'.html',html,'text/html');
 };
 
-// drag handle: resize the left task-panel width (all columns scale together)
-let lw=+localStorage.getItem('gantt-lw')||1;
-document.documentElement.style.setProperty('--lw',lw);
-const resizer=document.createElement('div');resizer.id='rh';resizer.title='Drag to resize';
-resizer.onmousedown=e=>{
-  e.preventDefault();resizer.classList.add('on');
-  const x0=e.clientX,w0=lw;
-  const mv=ev=>{lw=Math.min(2,Math.max(.6,w0+(ev.clientX-x0)/400));document.documentElement.style.setProperty('--lw',lw)};
-  const up=()=>{resizer.classList.remove('on');if(!SNAPSHOT)localStorage.setItem('gantt-lw',lw);
-    removeEventListener('mousemove',mv);removeEventListener('mouseup',up)};
-  addEventListener('mousemove',mv);addEventListener('mouseup',up);
-};
-
-const LABEL_FIELDS=[
-  ['name','Column 1 · Task'],['who','Column 2 · Assignee'],['est','Column 3 · Timeline'],
-  ['ddl','Column 4 · Deadline'],['status','Column 5 · Status'],['prog','Column 6 · Progress']
-];
-$('btnLabels').onclick=()=>{
-  $('labelFields').innerHTML=LABEL_FIELDS.map(([k,d])=>`<label>${d}</label><input data-lk="${k}" value="${esc(LABELS[k])}">`).join('');
-  $('dlgLabels').showModal();
+// ----- column manager -----
+let draft=[];
+function drawColEditor(){
+  $('colList').innerHTML=draft.map((c,i)=>`<div class="colrow" data-i="${i}">
+    <span><button data-act="up" ${i===0?'disabled':''}>↑</button><button data-act="down" ${i===draft.length-1?'disabled':''}>↓</button></span>
+    <input type="checkbox" data-act="vis" ${c.visible?'checked':''} title="Show / hide column">
+    <input type="text" data-act="label" value="${esc(c.label)}">
+    <span class="tag">${c.builtin?'built-in':({text:'Text',dropdown:'Dropdown',date:'Date',number:'Number'})[c.type]}</span>
+    ${c.builtin?'<span></span>':'<button data-act="del" title="Delete column">✕</button>'}
+    ${!c.builtin&&c.type==='dropdown'?`<input type="text" class="opts" data-act="opts" placeholder="Options, comma separated (e.g. High, Medium, Low)" value="${esc((c.options||[]).join(', '))}">`:''}
+  </div>`).join('');
+}
+$('colList').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-act]');if(!b)return;
+  const i=+b.closest('.colrow').dataset.i,a=b.dataset.act;
+  if(a==='up'&&i>0)[draft[i-1],draft[i]]=[draft[i],draft[i-1]];
+  else if(a==='down'&&i<draft.length-1)[draft[i+1],draft[i]]=[draft[i],draft[i+1]];
+  else if(a==='del'){if(!confirm('Delete column "'+draft[i].label+'"? Values entered in it will be removed from view.'))return;draft.splice(i,1)}
+  drawColEditor();
+});
+$('colList').addEventListener('input',e=>{
+  const a=e.target.dataset.act;if(!a)return;
+  const c=draft[+e.target.closest('.colrow').dataset.i];
+  if(a==='label')c.label=e.target.value;
+  else if(a==='vis')c.visible=e.target.checked;
+  else if(a==='opts')c.options=e.target.value.split(',').map(s=>s.trim()).filter(Boolean);
+});
+$('btnLabels').onclick=()=>{draft=COLS.map(c=>({...c,options:c.options?[...c.options]:undefined}));drawColEditor();$('dlgLabels').showModal()};
+$('lAdd').onclick=()=>{
+  const name=$('newColName').value.trim();if(!name){$('newColName').focus();return}
+  const type=$('newColType').value;
+  draft.push({id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),label:name,builtin:false,visible:true,w:130,type,options:[]});
+  $('newColName').value='';drawColEditor();
+  $('colList').scrollTop=$('colList').scrollHeight;
 };
 $('lCancel').onclick=()=>$('dlgLabels').close();
-$('lReset').onclick=()=>{document.querySelectorAll('#labelFields input').forEach(i=>i.value=DEFAULT_LABELS[i.dataset.lk])};
-$('lChinese').onclick=()=>{document.querySelectorAll('#labelFields input').forEach(i=>i.value=CN_LABELS[i.dataset.lk])};
-$('lSave').onclick=()=>{
-  document.querySelectorAll('#labelFields input').forEach(i=>LABELS[i.dataset.lk]=i.value.trim()||DEFAULT_LABELS[i.dataset.lk]);
-  if(!SNAPSHOT)localStorage.setItem('gantt-labels',JSON.stringify(LABELS));
-  $('dlgLabels').close();render();
+$('lReset').onclick=()=>{
+  if(!confirm('Reset all columns to default? Custom columns will be removed.'))return;
+  draft=defaultCols();drawColEditor();
 };
-
+$('lChinese').onclick=()=>{draft.forEach(c=>{if(c.builtin)c.label=CN_LABELS[c.id]});drawColEditor()};
+$('lSave').onclick=()=>{
+  draft.forEach(c=>{c.label=c.label.trim()||EN_LABELS[c.id]||'Column'});
+  COLS=draft;saveCols();$('dlgLabels').close();render();
+};
 render();
 </script>
 </body>
