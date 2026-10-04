@@ -32,10 +32,11 @@ button.primary:hover{background:#0757b3}
 .lg i{width:12px;height:12px;border-radius:3px;display:inline-block}
 .lg i.diamond{width:9px;height:9px;border-radius:0;transform:rotate(45deg);background:#d1242f}
 .scroll{flex:1;overflow:auto;background:#fff}
-.grid{display:flex;min-width:100%;width:max-content}
-.left{position:sticky;left:0;z-index:15;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,.05);flex:none}
+.grid{display:flex;flex-direction:column;min-width:100%;width:max-content}
+.left{position:sticky;left:0;z-index:15;background:#fff;flex:none;width:max-content;border-bottom:3px solid var(--border);box-shadow:0 3px 6px rgba(0,0,0,.06)}
+.right{min-width:100%}
 .lrow{display:flex;border-bottom:1px solid var(--border);height:var(--row-h);align-items:stretch}
-.lhead{height:var(--head-h);position:sticky;top:0;z-index:8;background:#f2f4f7;font-weight:600;color:var(--muted);font-size:12px}
+.lhead{height:36px;background:#f2f4f7;font-weight:600;color:var(--muted);font-size:12px}
 .cell{padding:6px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-right:1px solid var(--border);display:flex;align-items:center}
 .c-name{width:calc(230px*var(--lw));flex-direction:column;align-items:flex-start;justify-content:center;line-height:1.2}
 .c-name small{color:var(--muted);font-weight:400}
