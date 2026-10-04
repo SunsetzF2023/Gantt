@@ -45,6 +45,12 @@ button.primary:hover{background:#0757b3}
 .c-ddl{width:calc(92px*var(--lw));justify-content:center;font-size:12px}
 .c-ddl.over{color:#d1242f;font-weight:600}
 .c-prog{width:calc(64px*var(--lw));justify-content:center;font-size:11px}
+.c-status{width:calc(118px*var(--lw));justify-content:center}
+.c-status select{font:inherit;font-size:11px;color:#fff;border:none;border-radius:10px;padding:2px 6px;cursor:pointer;appearance:auto}
+.st-todo{background:#57606a}
+.st-doing{background:#0969da}
+.st-paused{background:#bf8700}
+.st-done{background:#1a7f37}
 #rh{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:col-resize;z-index:20}
 #rh:hover,#rh.on{background:#0969da33}
 .c-who span{display:inline-block;padding:1px 8px;border-radius:10px;color:#fff;font-size:11px}
@@ -142,7 +148,7 @@ footer{padding:6px 16px;background:#fff;border-top:1px solid var(--border);font-
     <label>Deadline</label><input id="fDdl" type="date">
     <label>Status</label>
     <select id="fStatus">
-      <option value="todo">To Do</option>
+      <option value="todo">Not Started</option>
       <option value="doing">In Progress</option>
       <option value="paused">Paused</option>
       <option value="done">Done</option>
@@ -177,8 +183,8 @@ const DAY=86400000, DAY_W=()=>+document.getElementById('selZoom').value;
 const $=s=>document.getElementById(s);
 const PALETTE=['#0969da','#8250df','#1a7f37','#bf8700','#cf222e','#0e7c86','#d4a017','#57606a'];
 
-const DEFAULT_LABELS={name:'Task',who:'Assigned By',est:'Start → Est. Finish',ddl:'Deadline',prog:'Progress'};
-const CN_LABELS={name:'任务',who:'指派人',est:'起 → 预计完成',ddl:'截止时间',prog:'进度'};
+const DEFAULT_LABELS={name:'Task',who:'Assigned By',est:'Start → Est. Finish',ddl:'Deadline',status:'Status',prog:'Progress'};
+const CN_LABELS={name:'任务',who:'指派人',est:'起 → 预计完成',ddl:'截止时间',status:'状态',prog:'进度'};
 let LABELS=Object.assign({},DEFAULT_LABELS);
 
 const snapEl=document.querySelector('script[type="application/json"][id="snapshot-data"]');
@@ -260,7 +266,7 @@ function render(){
   let lh=`<div class="lrow lhead">
     <div class="cell c-name">${esc(LABELS.name)}</div><div class="cell c-who">${esc(LABELS.who)}</div>
     <div class="cell c-est">${esc(LABELS.est)}</div><div class="cell c-ddl">${esc(LABELS.ddl)}</div>
-    <div class="cell c-prog">${esc(LABELS.prog)}</div></div>`;
+    <div class="cell c-status">${esc(LABELS.status)}</div><div class="cell c-prog">${esc(LABELS.prog)}</div></div>`;
   for(const t of list){
     const fin=estFinish(t),over=t.ddl&&fin>parseISO(t.ddl);
     const sub=t.content||t.note||'';
@@ -269,6 +275,12 @@ function render(){
       <div class="cell c-who"><span style="background:${whoColor(t.who)}">${esc(t.who)}</span></div>
       <div class="cell c-est"><b>${fmtShort(parseISO(t.start))} → ${fmtShort(fin)}</b><small>${t.estEnd?'':(t.est||1)+' workdays'}</small></div>
       <div class="cell c-ddl ${over?'over':''}">${t.ddl?fmtShort(parseISO(t.ddl)):'—'}</div>
+      <div class="cell c-status"><select class="st-${t.status}" data-sid="${t.id}" ${SNAPSHOT?'disabled':''}>
+        <option value="todo" ${t.status==='todo'?'selected':''}>Not Started</option>
+        <option value="doing" ${t.status==='doing'?'selected':''}>In Progress</option>
+        <option value="paused" ${t.status==='paused'?'selected':''}>Paused</option>
+        <option value="done" ${t.status==='done'?'selected':''}>Done</option>
+      </select></div>
       <div class="cell c-prog">${t.status==='done'?'✓':t.prog+'%'}</div></div>`;
   }
   $('left').innerHTML=lh;
@@ -340,6 +352,15 @@ function render(){
   if(!SNAPSHOT){
     document.querySelectorAll('.lrow.task,.bar').forEach(el=>
       el.addEventListener('click',()=>openDlg(+el.dataset.id)));
+    document.querySelectorAll('.c-status select').forEach(sel=>{
+      sel.addEventListener('click',e=>e.stopPropagation());
+      sel.addEventListener('change',()=>{
+        const t=tasks.find(x=>x.id===+sel.dataset.sid);
+        if(!t)return;
+        t.status=sel.value;if(t.status==='done')t.prog=100;
+        save();render();
+      });
+    });
   }
 }
 
@@ -397,7 +418,7 @@ $('fileInput').onchange=e=>{
   r.readAsText(f);e.target.value='';
 };
 
-const STATUS_NAME={todo:'To Do',doing:'In Progress',paused:'Paused',done:'Done'};
+const STATUS_NAME={todo:'Not Started',doing:'In Progress',paused:'Paused',done:'Done'};
 
 // --- minimal real-.xlsx writer: ZIP (stored) + OOXML parts ---
 function crc32(u8){
@@ -548,7 +569,7 @@ rh.onmousedown=e=>{
 
 const LABEL_FIELDS=[
   ['name','Column 1 · Task'],['who','Column 2 · Assignee'],['est','Column 3 · Timeline'],
-  ['ddl','Column 4 · Deadline'],['prog','Column 5 · Progress']
+  ['ddl','Column 4 · Deadline'],['status','Column 5 · Status'],['prog','Column 6 · Progress']
 ];
 $('btnLabels').onclick=()=>{
   $('labelFields').innerHTML=LABEL_FIELDS.map(([k,d])=>`<label>${d}</label><input data-lk="${k}" value="${esc(LABELS[k])}">`).join('');
