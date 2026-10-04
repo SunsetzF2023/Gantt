@@ -324,7 +324,7 @@ function render(){
     if(x<0){w+=x;x=0}
     const col=whoColor(t.who);
     const over=t.ddl&&f>parseISO(t.ddl);
-    const tip=`${esc(t.name)}&#10;${LABELS.who}: ${esc(t.who)}&#10;${t.start} → ${fmt(fin)}&#10;${LABELS.ddl}: ${t.ddl||'—'}&#10;${LABELS.prog}: ${t.prog}%${(t.content||t.note)?'&#10;'+esc(t.content||t.note):''}`;
+    const tip=`${esc(t.name)}&#10;${LABELS.who}: ${esc(t.who)}&#10;${t.start} → ${fmt(f)}&#10;${LABELS.ddl}: ${t.ddl||'—'}&#10;${LABELS.prog}: ${t.prog}%${(t.content||t.note)?'&#10;'+esc(t.content||t.note):''}`;
     let bar=`<div class="bar ${t.status} ${over?'over-ddl':''}" data-id="${t.id}"
       style="left:${x}px;width:${Math.max(w,W*.6)}px;background:${col}"
       title="${tip}">
@@ -346,7 +346,7 @@ function render(){
   $('selAssignee').innerHTML='<option value="">All assignees</option>'+whos.map(w=>`<option ${w===cur?'selected':''}>${esc(w)}</option>`).join('');
   $('whoList').innerHTML=whos.map(w=>`<option value="${esc(w)}">`).join('');
   $('assigneeLegend').innerHTML=whos.map(w=>`<span class="lg"><i style="background:${whoColor(w)}"></i>${esc(w)}</span>`).join(' ');
-  $('left').appendChild(rh);
+  $('left').appendChild(resizer);
 
   // row interactions
   if(!SNAPSHOT){
@@ -557,12 +557,12 @@ $('btnSnap').onclick=()=>{
 // drag handle: resize the left task-panel width (all columns scale together)
 let lw=+localStorage.getItem('gantt-lw')||1;
 document.documentElement.style.setProperty('--lw',lw);
-const rh=document.createElement('div');rh.id='rh';rh.title='Drag to resize';
-rh.onmousedown=e=>{
-  e.preventDefault();rh.classList.add('on');
+const resizer=document.createElement('div');resizer.id='rh';resizer.title='Drag to resize';
+resizer.onmousedown=e=>{
+  e.preventDefault();resizer.classList.add('on');
   const x0=e.clientX,w0=lw;
   const mv=ev=>{lw=Math.min(2,Math.max(.6,w0+(ev.clientX-x0)/400));document.documentElement.style.setProperty('--lw',lw)};
-  const up=()=>{rh.classList.remove('on');if(!SNAPSHOT)localStorage.setItem('gantt-lw',lw);
+  const up=()=>{resizer.classList.remove('on');if(!SNAPSHOT)localStorage.setItem('gantt-lw',lw);
     removeEventListener('mousemove',mv);removeEventListener('mouseup',up)};
   addEventListener('mousemove',mv);addEventListener('mouseup',up);
 };
