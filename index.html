@@ -6,6 +6,7 @@
 <style>
 :root{
   --row-h:40px;
+  --lw:1;
   --m-head:22px;
   --d-head:26px;
   --cap-h:18px;
@@ -36,14 +37,16 @@ button.primary:hover{background:#0757b3}
 .lrow{display:flex;border-bottom:1px solid var(--border);height:var(--row-h);align-items:stretch}
 .lhead{height:var(--head-h);position:sticky;top:0;z-index:8;background:#f2f4f7;font-weight:600;color:var(--muted);font-size:12px}
 .cell{padding:6px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-right:1px solid var(--border);display:flex;align-items:center}
-.c-name{width:200px;flex-direction:column;align-items:flex-start;justify-content:center;line-height:1.2}
+.c-name{width:calc(230px*var(--lw));flex-direction:column;align-items:flex-start;justify-content:center;line-height:1.2}
 .c-name small{color:var(--muted);font-weight:400}
-.c-who{width:70px;justify-content:center}
-.c-est{width:88px;flex-direction:column;align-items:flex-start;justify-content:center;line-height:1.2;font-size:11px}
+.c-who{width:calc(92px*var(--lw));justify-content:center}
+.c-est{width:calc(140px*var(--lw));flex-direction:column;align-items:flex-start;justify-content:center;line-height:1.2;font-size:11px}
 .c-est b{font-size:12px}
-.c-ddl{width:82px;justify-content:center;font-size:12px}
+.c-ddl{width:calc(92px*var(--lw));justify-content:center;font-size:12px}
 .c-ddl.over{color:#d1242f;font-weight:600}
-.c-prog{width:60px;justify-content:center;font-size:11px}
+.c-prog{width:calc(64px*var(--lw));justify-content:center;font-size:11px}
+#rh{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:col-resize;z-index:20}
+#rh:hover,#rh.on{background:#0969da33}
 .c-who span{display:inline-block;padding:1px 8px;border-radius:10px;color:#fff;font-size:11px}
 .lrow.task{cursor:pointer}
 .lrow.task:hover{background:#f6f8fa}
@@ -331,6 +334,7 @@ function render(){
   $('selAssignee').innerHTML='<option value="">All assignees</option>'+whos.map(w=>`<option ${w===cur?'selected':''}>${esc(w)}</option>`).join('');
   $('whoList').innerHTML=whos.map(w=>`<option value="${esc(w)}">`).join('');
   $('assigneeLegend').innerHTML=whos.map(w=>`<span class="lg"><i style="background:${whoColor(w)}"></i>${esc(w)}</span>`).join(' ');
+  $('left').appendChild(rh);
 
   // row interactions
   if(!SNAPSHOT){
@@ -527,6 +531,19 @@ $('btnSnap').onclick=()=>{
   let html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
   html=html.replace('</head>',inject+'</head>');
   download('gantt-snapshot-'+fmt(today())+'.html',html,'text/html');
+};
+
+// drag handle: resize the left task-panel width (all columns scale together)
+let lw=+localStorage.getItem('gantt-lw')||1;
+document.documentElement.style.setProperty('--lw',lw);
+const rh=document.createElement('div');rh.id='rh';rh.title='Drag to resize';
+rh.onmousedown=e=>{
+  e.preventDefault();rh.classList.add('on');
+  const x0=e.clientX,w0=lw;
+  const mv=ev=>{lw=Math.min(2,Math.max(.6,w0+(ev.clientX-x0)/400));document.documentElement.style.setProperty('--lw',lw)};
+  const up=()=>{rh.classList.remove('on');if(!SNAPSHOT)localStorage.setItem('gantt-lw',lw);
+    removeEventListener('mousemove',mv);removeEventListener('mouseup',up)};
+  addEventListener('mousemove',mv);addEventListener('mouseup',up);
 };
 
 const LABEL_FIELDS=[
