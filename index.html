@@ -56,23 +56,6 @@ button.primary:hover{background:#0757b3}
 .lrow.task:hover{background:#f6f8fa}
 .lrow.task.done .k-name{color:var(--muted);text-decoration:line-through}
 #cfields{display:contents}
-#gate{position:fixed;inset:0;background:#f7f8fa;z-index:100;display:none;align-items:center;justify-content:center}
-.gate-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:28px 32px;width:min(420px,92vw);box-shadow:0 8px 30px rgba(0,0,0,.08);display:flex;flex-direction:column;gap:14px}
-.gate-card h2{font-size:18px}
-.gate-card p{color:var(--muted)}
-#gateForm{display:flex;flex-direction:column;gap:10px}
-#gateForm input{font:inherit;padding:8px 10px;border:1px solid var(--border);border-radius:6px}
-#gateForm button,#gateOut{font:inherit;padding:8px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:#fff}
-#gateForm button.primary{background:#0969da;color:#fff;border-color:#0969da}
-#gateForm button:disabled{opacity:.6;cursor:default}
-#gateNote{min-height:18px;font-size:12px;color:#1a7f37}
-#gateNote.err{color:#d1242f}
-#gateLocal{font-size:12px;color:var(--muted);text-align:center}
-.userbox{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
-.userbox button{font:inherit;font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer}
-.sync{font-size:12px;color:var(--muted)}
-.sync.live{color:#1a7f37}
-.sync.err{color:#d1242f}
 .colrow{display:grid;grid-template-columns:52px 24px 1fr 130px 30px;gap:6px;align-items:center;padding:4px 0}
 .colrow input[type=text],.colrow select{font:inherit;padding:4px 6px;border:1px solid var(--border);border-radius:6px;width:100%}
 .colrow .opts{grid-column:3/6;font-size:11px}
@@ -143,23 +126,8 @@ footer{padding:6px 16px;background:#fff;border-top:1px solid var(--border);font-
     <button class="edit-only" id="btnExcel" title="Download as a real .xlsx workbook">Export Excel</button>
     <button class="edit-only" id="btnSnap" title="Generate a read-only HTML to share">Export Snapshot</button>
     <button class="edit-only" id="btnLabels" title="Rename column headers">⚙ Columns</button>
-    <span id="syncStatus" class="sync" style="display:none"></span>
-    <span id="userBox" class="userbox" style="display:none"><span id="userText"></span><button id="btnSignOut">Sign out</button></span>
   </div>
 </header>
-<div id="gate">
-  <div class="gate-card">
-    <h2>Workload Gantt</h2>
-    <p id="gateMsg">Sign in with your email to view the live schedule. We will email you a one-time login link.</p>
-    <div id="gateForm">
-      <input id="gateEmail" type="email" placeholder="you@company.com" autocomplete="email">
-      <button class="primary" id="gateSend">Email me a login link</button>
-    </div>
-    <div id="gateNote"></div>
-    <button id="gateOut" style="display:none">Sign out</button>
-    <a href="#" id="gateLocal">Use locally without signing in</a>
-  </div>
-</div>
 <div class="scroll" id="scroll">
   <div class="grid">
     <div class="left" id="left"></div>
@@ -228,7 +196,6 @@ footer{padding:6px 16px;background:#fff;border-top:1px solid var(--border);font-
 </dialog>
 <input type="file" id="fileInput" accept=".json" style="display:none">
 
-<script src="supabase.js"></script>
 <script>
 const DAY=86400000, DAY_W=()=>+document.getElementById('selZoom').value;
 const $=s=>document.getElementById(s);
@@ -254,27 +221,13 @@ function normCols(saved){
   for(const c of defaultCols())if(!seen.has(c.id))out.push(c);
   return out;
 }
-function saveCols(){
-  if(SNAPSHOT)return;
-  if(MODE==='local')localStorage.setItem('gantt-cols',JSON.stringify(COLS));
-  else cloudSave();
-}
+function saveCols(){if(!SNAPSHOT)localStorage.setItem('gantt-cols',JSON.stringify(COLS))}
 
 const snapEl=document.querySelector('script[type="application/json"][id="snapshot-data"]');
-let SNAPSHOT=!!snapEl;
-let MODE=snapEl?'snapshot':'cloud';
-let tasks=[], viewStart;
+const SNAPSHOT=!!snapEl;
+let tasks, viewStart;
 
-function loadLocal(){
-  tasks=JSON.parse(localStorage.getItem('gantt-tasks')||'null')||sample();
-  const sc=JSON.parse(localStorage.getItem('gantt-cols')||'null');
-  if(sc)COLS=normCols(sc);
-  else{
-    const old=JSON.parse(localStorage.getItem('gantt-labels')||'{}');
-    COLS=defaultCols();COLS.forEach(c=>{if(old[c.id])c.label=old[c.id]});
-  }
-}
-if(snapEl){
+if(SNAPSHOT){
   const snap=JSON.parse(snapEl.textContent);
   tasks=snap.tasks||snap;
   if(snap.cols)COLS=normCols(snap.cols);
@@ -283,8 +236,14 @@ if(snapEl){
   $('snapBanner').style.display='';
   $('snapBanner').textContent='Read-only snapshot · generated '+(snap.generated||'');
 }else{
+  tasks=JSON.parse(localStorage.getItem('gantt-tasks')||'null')||sample();
   viewStart=JSON.parse(localStorage.getItem('gantt-view')||'null');
-  document.querySelectorAll('.edit-only').forEach(e=>e.style.display='none');
+  const sc=JSON.parse(localStorage.getItem('gantt-cols')||'null');
+  if(sc)COLS=normCols(sc);
+  else{
+    const old=JSON.parse(localStorage.getItem('gantt-labels')||'{}');
+    COLS=defaultCols();COLS.forEach(c=>{if(old[c.id])c.label=old[c.id]});
+  }
 }
 if(!viewStart)viewStart=fmt(addDays(today(),-3));
 viewStart=parseISO(viewStart);
@@ -326,11 +285,9 @@ function visible(){
 }
 function save(){
   if(SNAPSHOT)return;
-  if(MODE==='local')localStorage.setItem('gantt-tasks',JSON.stringify(tasks));
-  else cloudSave();
-  saveView();
+  localStorage.setItem('gantt-tasks',JSON.stringify(tasks));
+  localStorage.setItem('gantt-view',JSON.stringify(fmt(viewStart)));
 }
-function saveView(){if(MODE!=='snapshot')localStorage.setItem('gantt-view',JSON.stringify(fmt(viewStart)))}
 
 function range(list){
   let end=addDays(viewStart,28);
@@ -504,12 +461,12 @@ $('fDel').onclick=()=>{
 };
 
 // ----- toolbar -----
-$('btnPrev').onclick=()=>{viewStart=addDays(viewStart,-14);saveView();render()};
-$('btnNext').onclick=()=>{viewStart=addDays(viewStart,14);saveView();render()};
-$('btnToday').onclick=()=>{viewStart=addDays(today(),-3);saveView();render()};
+$('btnPrev').onclick=()=>{viewStart=addDays(viewStart,-14);save();render()};
+$('btnNext').onclick=()=>{viewStart=addDays(viewStart,14);save();render()};
+$('btnToday').onclick=()=>{viewStart=addDays(today(),-3);save();render()};
 $('selAssignee').onchange=render;
 $('chkDone').onchange=render;
-$('selZoom').onchange=render;
+$('selZoom').onchange=()=>{save();render()};
 
 function download(name,content,type){
   const a=document.createElement('a');
@@ -706,9 +663,7 @@ $('btnSnap').onclick=()=>{
   $('dlg').close();
   const data=JSON.stringify({tasks,generated:fmt(today()),cols:COLS,viewStart:fmt(viewStart)}).replace(/<\//g,'<\\/');
   const inject=`<script type="application/json" id="snapshot-data">`+data+`<`+`/script>`;
-  const ut=$('userText').textContent;$('userText').textContent='';
   let html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
-  $('userText').textContent=ut;
   html=html.replace('</head>',inject+'</head>');
   download('gantt-snapshot-'+fmt(today())+'.html',html,'text/html');
 };
@@ -758,118 +713,7 @@ $('lSave').onclick=()=>{
   draft.forEach(c=>{c.label=c.label.trim()||EN_LABELS[c.id]||'Column'});
   COLS=draft;saveCols();$('dlgLabels').close();render();
 };
-// ----- cloud sync (Supabase) -----
-const SB_URL='https://gwsggzowjibnwbnllctz.supabase.co';
-const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3c2dnem93amlibndibmxsY3R6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1MDE2ODMsImV4cCI6MjEwMjA3NzY4M30.F5gsxD_CwyQ_txBzI6qb-RboTXioF5UaKJDCNRCVlH4';
-let sb=null,role=null,saveTimer=null,lastTs=0,knownTs=0,entered=null,channel=null,pollTimer=null,sendCooldown=null;
-
-function setSync(s){
-  const el=$('syncStatus');if(MODE!=='cloud'){el.style.display='none';return}
-  const m={live:['● Live','live'],saving:['Saving…',''],error:['⚠ Not saved','err'],offline:['○ Reconnecting…','err']}[s];
-  el.style.display='';el.textContent=m[0];el.className='sync '+m[1];
-}
-function showGate(msg,opts={}){
-  $('gate').style.display='flex';
-  if(msg)$('gateMsg').textContent=msg;
-  $('gateForm').style.display=opts.noForm?'none':'';
-  $('gateOut').style.display=opts.signout?'':'none';
-  $('gateLocal').style.display=opts.noForm?'none':'';
-}
-function gateNote(t,err){$('gateNote').textContent=t;$('gateNote').className=err?'err':''}
-function teardown(){
-  if(channel&&sb){sb.removeChannel(channel);channel=null}
-  clearInterval(pollTimer);clearTimeout(saveTimer);saveTimer=null;role=null;
-  $('userBox').style.display='none';$('syncStatus').style.display='none';
-}
-function applyRemote(row){
-  tasks=Array.isArray(row.tasks)?row.tasks:[];
-  COLS=row.cols?normCols(row.cols):defaultCols();
-  knownTs=new Date(row.updated_at).getTime();
-}
-function incoming(row){
-  const ts=new Date(row.updated_at).getTime();
-  if(ts<=lastTs||ts<=knownTs||saveTimer)return;
-  applyRemote(row);render();
-}
-async function pull(){
-  if(!sb||MODE!=='cloud'||!role||document.hidden||saveTimer)return;
-  const {data}=await sb.from('gantt_state').select('tasks,cols,updated_at').eq('id',1).maybeSingle();
-  if(data)incoming(data);
-}
-function cloudSave(){
-  if(MODE!=='cloud'||role!=='owner')return;
-  clearTimeout(saveTimer);setSync('saving');
-  saveTimer=setTimeout(async()=>{
-    saveTimer=null;
-    const ts=Date.now();lastTs=ts;
-    const {data,error}=await sb.from('gantt_state').update({tasks,cols:COLS,updated_at:new Date(ts).toISOString()}).eq('id',1).select('id');
-    if(error||!data||!data.length){setSync('error');console.error(error||'update affected 0 rows');return}
-    knownTs=ts;if(!saveTimer)setSync('live');
-  },500);
-}
-async function enter(session){
-  const email=session.user.email||'';
-  $('gate').style.display='none';
-  const {data:r,error:re}=await sb.rpc('gantt_role');
-  if(re){entered=null;showGate('Could not reach the database ('+re.message+'). Please try again in a minute.',{noForm:true,signout:true});return}
-  if(!r){showGate(email+' does not have access to this schedule. Ask the owner to add your email.',{noForm:true,signout:true});return}
-  role=r;SNAPSHOT=role!=='owner';
-  document.querySelectorAll('.edit-only').forEach(e=>e.style.display=SNAPSHOT?'none':'');
-  $('userText').textContent=email+' · '+(SNAPSHOT?'Viewer':'Owner');$('userBox').style.display='';
-  const {data,error}=await sb.from('gantt_state').select('tasks,cols,updated_at').eq('id',1).maybeSingle();
-  if(error||!data){entered=null;role=null;showGate('Could not load the schedule'+(error?' ('+error.message+')':'')+'.',{noForm:true,signout:true});return}
-  applyRemote(data);
-  if(role==='owner'&&!tasks.length){
-    const lt=localStorage.getItem('gantt-tasks');
-    if(lt&&confirm('The cloud schedule is empty. Upload the tasks saved in this browser?')){
-      tasks=JSON.parse(lt);const lc=localStorage.getItem('gantt-cols');if(lc)COLS=normCols(JSON.parse(lc));
-      cloudSave();
-    }
-  }
-  render();
-  channel=sb.channel('gantt-state').on('postgres_changes',{event:'*',schema:'public',table:'gantt_state'},p=>{if(p.new&&p.new.tasks)incoming(p.new)})
-    .subscribe(st=>{if(st==='SUBSCRIBED')setSync('live');else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'||st==='CLOSED')setSync('offline')});
-  pollTimer=setInterval(pull,30000);
-  setSync('live');
-}
-async function onSession(session){
-  if(MODE==='local')return;
-  if(!session){entered=null;teardown();tasks=[];render();showGate('Sign in with your email to view the live schedule. We will email you a one-time login link.');return}
-  if(entered===session.user.id)return;
-  entered=session.user.id;
-  await enter(session);
-}
-function startCloud(){
-  if(!window.supabase){showGate('Could not load the sign-in library. Check your connection and reload.',{noForm:true});return}
-  sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-  sb.auth.onAuthStateChange((ev,session)=>{setTimeout(()=>onSession(session),0)});
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull()});
-}
-$('gateSend').onclick=async()=>{
-  const email=$('gateEmail').value.trim();
-  if(!email){$('gateEmail').focus();return}
-  const btn=$('gateSend');btn.disabled=true;gateNote('Sending…');
-  const redirect=location.origin+location.pathname.replace(/index\.html$/,'');
-  const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:redirect}});
-  if(error){gateNote(error.message,true);btn.disabled=false;return}
-  gateNote('Login link sent. Check your inbox (and spam folder), then click the link.');
-  let n=60;clearInterval(sendCooldown);
-  sendCooldown=setInterval(()=>{btn.textContent=n>0?'Resend in '+n+'s':'Email me a login link';if(n--<=0){clearInterval(sendCooldown);btn.disabled=false}},1000);
-};
-$('gateEmail').addEventListener('keydown',e=>{if(e.key==='Enter')$('gateSend').click()});
-const signOut=()=>sb&&sb.auth.signOut();
-$('gateOut').onclick=signOut;$('btnSignOut').onclick=signOut;
-$('gateLocal').onclick=e=>{
-  e.preventDefault();
-  MODE='local';SNAPSHOT=false;loadLocal();teardown();
-  $('gate').style.display='none';
-  document.querySelectorAll('.edit-only').forEach(x=>x.style.display='');
-  $('userText').textContent='Local mode (this browser only)';$('userBox').style.display='';$('btnSignOut').style.display='none';
-  render();
-};
-
-if(MODE==='snapshot'){render()}
-else{render();showGate('Loading…',{noForm:true});startCloud()}
+render();
 </script>
 </body>
 </html>
