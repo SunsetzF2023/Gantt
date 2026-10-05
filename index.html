@@ -150,10 +150,11 @@ footer{padding:6px 16px;background:#fff;border-top:1px solid var(--border);font-
 <div id="gate">
   <div class="gate-card">
     <h2>Workload Gantt</h2>
-    <p id="gateMsg">Sign in with your email to view the live schedule. We will email you a one-time login link.</p>
+    <p id="gateMsg">Sign in to view the live schedule.</p>
     <div id="gateForm">
-      <input id="gateEmail" type="email" placeholder="you@company.com" autocomplete="email">
-      <button class="primary" id="gateSend">Email me a login link</button>
+      <input id="gateEmail" type="email" placeholder="Email" autocomplete="username">
+      <input id="gatePass" type="password" placeholder="Password" autocomplete="current-password">
+      <button class="primary" id="gateSend">Sign in</button>
     </div>
     <div id="gateNote"></div>
     <button id="gateOut" style="display:none">Sign out</button>
@@ -761,7 +762,7 @@ $('lSave').onclick=()=>{
 // ----- cloud sync (Supabase) -----
 const SB_URL='https://gwsggzowjibnwbnllctz.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3c2dnem93amlibndibmxsY3R6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1MDE2ODMsImV4cCI6MjEwMjA3NzY4M30.F5gsxD_CwyQ_txBzI6qb-RboTXioF5UaKJDCNRCVlH4';
-let sb=null,role=null,saveTimer=null,lastTs=0,knownTs=0,entered=null,channel=null,pollTimer=null,sendCooldown=null;
+let sb=null,role=null,saveTimer=null,lastTs=0,knownTs=0,entered=null,channel=null,pollTimer=null;
 
 function setSync(s){
   const el=$('syncStatus');if(MODE!=='cloud'){el.style.display='none';return}
@@ -834,7 +835,7 @@ async function enter(session){
 }
 async function onSession(session){
   if(MODE==='local')return;
-  if(!session){entered=null;teardown();tasks=[];render();showGate('Sign in with your email to view the live schedule. We will email you a one-time login link.');return}
+  if(!session){entered=null;teardown();tasks=[];render();showGate('Sign in to view the live schedule.');return}
   if(entered===session.user.id)return;
   entered=session.user.id;
   await enter(session);
@@ -846,17 +847,16 @@ function startCloud(){
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull()});
 }
 $('gateSend').onclick=async()=>{
-  const email=$('gateEmail').value.trim();
+  const email=$('gateEmail').value.trim(),password=$('gatePass').value;
   if(!email){$('gateEmail').focus();return}
-  const btn=$('gateSend');btn.disabled=true;gateNote('Sending…');
-  const redirect=location.origin+location.pathname.replace(/index\.html$/,'');
-  const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:redirect}});
-  if(error){gateNote(error.message,true);btn.disabled=false;return}
-  gateNote('Login link sent. Check your inbox (and spam folder), then click the link.');
-  let n=60;clearInterval(sendCooldown);
-  sendCooldown=setInterval(()=>{btn.textContent=n>0?'Resend in '+n+'s':'Email me a login link';if(n--<=0){clearInterval(sendCooldown);btn.disabled=false}},1000);
+  if(!password){$('gatePass').focus();return}
+  const btn=$('gateSend');btn.disabled=true;gateNote('Signing in…');
+  const {error}=await sb.auth.signInWithPassword({email,password});
+  btn.disabled=false;
+  if(error){gateNote(/invalid login/i.test(error.message)?'Wrong email or password.':error.message,true);return}
+  gateNote('');$('gatePass').value='';
 };
-$('gateEmail').addEventListener('keydown',e=>{if(e.key==='Enter')$('gateSend').click()});
+['gateEmail','gatePass'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')$('gateSend').click()}));
 const signOut=()=>sb&&sb.auth.signOut();
 $('gateOut').onclick=signOut;$('btnSignOut').onclick=signOut;
 $('gateLocal').onclick=e=>{
