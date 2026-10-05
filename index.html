@@ -152,7 +152,7 @@ footer{padding:6px 16px;background:#fff;border-top:1px solid var(--border);font-
     <h2>Workload Gantt</h2>
     <p id="gateMsg">Sign in to view the live schedule.</p>
     <div id="gateForm">
-      <input id="gateEmail" type="email" placeholder="Email" autocomplete="username">
+      <input id="gateEmail" type="text" placeholder="Username" autocomplete="username" autocapitalize="none" spellcheck="false">
       <input id="gatePass" type="password" placeholder="Password" autocomplete="current-password">
       <button class="primary" id="gateSend">Sign in</button>
     </div>
@@ -762,6 +762,9 @@ $('lSave').onclick=()=>{
 // ----- cloud sync (Supabase) -----
 const SB_URL='https://gwsggzowjibnwbnllctz.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3c2dnem93amlibndibmxsY3R6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1MDE2ODMsImV4cCI6MjEwMjA3NzY4M30.F5gsxD_CwyQ_txBzI6qb-RboTXioF5UaKJDCNRCVlH4';
+const LOGIN_DOMAIN='gantt.invalid';
+const toEmail=u=>u.includes('@')?u:u.toLowerCase()+'@'+LOGIN_DOMAIN;
+const shortName=e=>e.endsWith('@'+LOGIN_DOMAIN)?e.slice(0,-LOGIN_DOMAIN.length-1):e;
 let sb=null,role=null,saveTimer=null,lastTs=0,knownTs=0,entered=null,channel=null,pollTimer=null;
 
 function setSync(s){
@@ -813,10 +816,10 @@ async function enter(session){
   $('gate').style.display='none';
   const {data:r,error:re}=await sb.rpc('gantt_role');
   if(re){entered=null;showGate('Could not reach the database ('+re.message+'). Please try again in a minute.',{noForm:true,signout:true});return}
-  if(!r){showGate(email+' does not have access to this schedule. Ask the owner to add your email.',{noForm:true,signout:true});return}
+  if(!r){showGate(shortName(email)+' does not have access to this schedule. Ask the owner to add this account.',{noForm:true,signout:true});return}
   role=r;SNAPSHOT=role!=='owner';
   document.querySelectorAll('.edit-only').forEach(e=>e.style.display=SNAPSHOT?'none':'');
-  $('userText').textContent=email+' · '+(SNAPSHOT?'Viewer':'Owner');$('userBox').style.display='';
+  $('userText').textContent=shortName(email)+' · '+(SNAPSHOT?'Viewer':'Owner');$('userBox').style.display='';
   const {data,error}=await sb.from('gantt_state').select('tasks,cols,updated_at').eq('id',1).maybeSingle();
   if(error||!data){entered=null;role=null;showGate('Could not load the schedule'+(error?' ('+error.message+')':'')+'.',{noForm:true,signout:true});return}
   applyRemote(data);
@@ -851,7 +854,7 @@ $('gateSend').onclick=async()=>{
   if(!email){$('gateEmail').focus();return}
   if(!password){$('gatePass').focus();return}
   const btn=$('gateSend');btn.disabled=true;gateNote('Signing in…');
-  const {error}=await sb.auth.signInWithPassword({email,password});
+  const {error}=await sb.auth.signInWithPassword({email:toEmail(email),password});
   btn.disabled=false;
   if(error){gateNote(/invalid login/i.test(error.message)?'Wrong email or password.':error.message,true);return}
   gateNote('');$('gatePass').value='';
