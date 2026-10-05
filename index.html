@@ -519,8 +519,10 @@ const COLREF=i=>{let s='';i++;while(i>0){s=String.fromCharCode(65+(i-1)%26)+s;i=
 
 $('btnExcel').onclick=()=>{
   const list=visible().sort((a,b)=>a.start<b.start?-1:1);
-  const vc=visCols(),NI=Math.max(1,vc.length);
-  const nDays=range(list),NCOL=NI+nDays,LASTROW=list.length+3;
+  const vc=visCols(),UNIT=36;
+  const spans=vc.map(c=>Math.max(2,Math.round(c.w/UNIT)));
+  const infoUnits=spans.reduce((a,b)=>a+b,0)||1;
+  const nDays=Math.max(range(list),infoUnits),NCOL=nDays,LASTC=NCOL-1;
   const colors=[...new Set(list.map(t=>whoColor(t.who)))];
 
   const fonts=['<font><sz val="11"/><name val="Calibri"/></font>',
@@ -533,11 +535,11 @@ $('btnExcel').onclick=()=>{
     `<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/><bgColor indexed="64"/></patternFill></fill>`)];
   const F={hdr:2,we:3,cap0:4,cap1:5,cap2:6,ddl:7,bar:c=>8+colors.indexOf(c)};
   const thin='<left style="thin"><color rgb="FFBFBFBF"/></left><right style="thin"><color rgb="FFBFBFBF"/></right><top style="thin"><color rgb="FFBFBFBF"/></top><bottom style="thin"><color rgb="FFBFBFBF"/></bottom>';
-  const xf=(font,fill,numFmt,align)=>`<xf numFmtId="${numFmt||0}" fontId="${font||0}" fillId="${fill||0}" borderId="1" xfId="0"${numFmt?' applyNumberFormat="1"':''}${font?' applyFont="1"':''}${fill?' applyFill="1"':''} applyBorder="1">${align?`<alignment horizontal="${align}"/>`:''}</xf>`;
-  const S={def:0,title:1,hdr:2,txt:3,ctr:4,pct:5,we:6,ddl:7,cap0:8,cap1:9,cap2:10,who:c=>11+colors.indexOf(c),bar:c=>11+colors.length+colors.indexOf(c)};
+  const xf=(font,fill,numFmt,align)=>`<xf numFmtId="${numFmt||0}" fontId="${font||0}" fillId="${fill||0}" borderId="1" xfId="0"${numFmt?' applyNumberFormat="1"':''}${font?' applyFont="1"':''}${fill?' applyFill="1"':''} applyBorder="1">${align?`<alignment horizontal="${align}" vertical="center"/>`:'<alignment vertical="center"/>'}</xf>`;
+  const S={def:0,title:1,hdr:2,txt:3,ctr:4,pct:5,we:6,ddl:7,cap0:8,cap1:9,cap2:10,who:c=>11+colors.indexOf(c),bar:c=>11+colors.length+colors.indexOf(c),sec:11+2*colors.length};
   const xfs=[xf(0,0,0),xf(3,0,0),xf(1,F.hdr,0,'center'),xf(0,0,0),xf(0,0,0,'center'),xf(0,0,9,'center'),
     xf(0,F.we,0),xf(2,F.ddl,0,'center'),xf(0,F.cap0,0,'center'),xf(0,F.cap1,0,'center'),xf(0,F.cap2,0,'center'),
-    ...colors.map(c=>xf(2,F.bar(c),0,'center')),...colors.map(c=>xf(0,F.bar(c),0))];
+    ...colors.map(c=>xf(2,F.bar(c),0,'center')),...colors.map(c=>xf(2,F.bar(c),0,'left')),xf(1,0,0,'left')];
   const stylesXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 <fonts count="${fonts.length}">${fonts.join('')}</fonts>
@@ -548,57 +550,86 @@ $('btnExcel').onclick=()=>{
 
   const cell=(r,c,s,inner,type)=>`<c r="${COLREF(c)}${r}" s="${s}"${type?` t="${type}"`:''}>${inner||''}</c>`;
   const scell=(r,c,s,v)=>cell(r,c,s,`<is><t${/^\s|\s$/.test(v)?' xml:space="preserve"':''}>${esc(v)}</t></is>`,'inlineStr');
+  const merges=[];
+  const span=(r,c0,n,s,make)=>{
+    let x=make(c0,s);for(let k=1;k<n;k++)x+=cell(r,c0+k,s);
+    if(n>1)merges.push(`${COLREF(c0)}${r}:${COLREF(c0+n-1)}${r}`);return x;
+  };
   const MON='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
+  const row=(r,x,ht)=>`<row r="${r}"${ht?` ht="${ht}" customHeight="1"`:''}>${x}</row>`;
   let rows='';
-  rows+=`<row r="1" ht="22" customHeight="1">${scell(1,0,S.title,'Workload Gantt — '+fmt(today()))}</row>`;
-  rows+='<row r="2" ht="18" customHeight="1">'+vc.map((c,i)=>scell(2,i,S.hdr,c.label)).join('')+
-    Array.from({length:nDays},(_,i)=>{const d=addDays(viewStart,i);return scell(2,NI+i,S.hdr,MON[d.getMonth()]+' '+d.getDate())}).join('')+'</row>';
-  const infoCell=(r,i,c,t,f)=>{
+
+  // ---- 1) task list ----
+  rows+=row(1,span(1,0,NCOL,S.title,(c,s)=>scell(1,c,s,'Workload Gantt — '+fmt(today()))),24);
+  let off=0,hx='';
+  vc.forEach((c,i)=>{hx+=span(2,off,spans[i],S.hdr,(cc,s)=>scell(2,cc,s,c.label));off+=spans[i]});
+  rows+=row(2,hx,20);
+  const infoVal=(c,t,f)=>{
     switch(c.id){
-      case 'name':return scell(r,i,S.txt,t.name);
-      case 'content':return scell(r,i,S.txt,t.content||t.note||'');
-      case 'who':return scell(r,i,S.who(whoColor(t.who)),t.who);
-      case 'est':return scell(r,i,S.ctr,t.start+' → '+fmt(f));
-      case 'ddl':return scell(r,i,S.ctr,t.ddl||'');
-      case 'status':return scell(r,i,S.ctr,STATUS_NAME[t.status]||t.status);
-      case 'prog':return cell(r,i,S.pct,`<v>${t.prog/100}</v>`);
+      case 'name':return {s:S.txt,t:t.name};
+      case 'content':return {s:S.txt,t:t.content||t.note||''};
+      case 'who':return {s:S.who(whoColor(t.who)),t:t.who};
+      case 'est':return {s:S.ctr,t:t.start+' → '+fmt(f)};
+      case 'ddl':return {s:S.ctr,t:t.ddl||''};
+      case 'status':return {s:S.ctr,t:STATUS_NAME[t.status]||t.status};
+      case 'prog':return {s:S.pct,n:t.prog/100};
     }
     const v=(t.cv&&t.cv[c.id])??'';
-    if(c.type==='number'&&v!==''&&!isNaN(+v))return cell(r,i,S.ctr,`<v>${+v}</v>`);
-    return scell(r,i,c.type==='text'?S.txt:S.ctr,String(v));
+    if(c.type==='number'&&v!==''&&!isNaN(+v))return {s:S.ctr,n:+v};
+    return {s:c.type==='text'?S.txt:S.ctr,t:String(v)};
   };
   list.forEach((t,ri)=>{
-    const r=ri+3,f=estFinish(t),s=parseISO(t.start);
-    let row=vc.map((c,i)=>infoCell(r,i,c,t,f)).join('');
-    for(let i=0;i<nDays;i++){
-      const d=addDays(viewStart,i),c=NI+i;
-      if(t.ddl&&fmt(d)===t.ddl)row+=scell(r,c,S.ddl,'◆');
-      else if(isWE(d))row+=cell(r,c,S.we);
-      else if(d>=s&&d<=f)row+=cell(r,c,S.bar(whoColor(t.who)));
-      else row+=cell(r,c,S.txt);
-    }
-    rows+=`<row r="${r}">${row}</row>`;
+    const r=ri+3,f=estFinish(t);let o=0,x='';
+    vc.forEach((c,i)=>{
+      const v=infoVal(c,t,f);
+      x+=span(r,o,spans[i],v.s,(cc,s)=>v.t!==undefined?scell(r,cc,s,v.t):cell(r,cc,s,`<v>${v.n}</v>`));o+=spans[i];
+    });
+    rows+=row(r,x,20);
   });
-  let lr=scell(LASTROW,0,S.hdr,'Daily Load')+Array.from({length:NI-1},(_,i)=>scell(LASTROW,1+i,S.hdr,'')).join('');
+
+  // ---- 2) timeline, directly below the list ----
+  let r=list.length+4;
+  rows+=row(r,span(r,0,NCOL,S.sec,(c,s)=>scell(r,c,s,'Timeline')),20);r++;
+  let mx='',i0=0;
+  for(let i=0;i<nDays;i++){
+    const d=addDays(viewStart,i),last=i===nDays-1||addDays(d,1).getMonth()!==d.getMonth();
+    if(last){mx+=span(r,i0,i-i0+1,S.hdr,(c,s)=>scell(r,c,s,MON[d.getMonth()]+' '+d.getFullYear()));i0=i+1}
+  }
+  rows+=row(r,mx,18);r++;
+  rows+=row(r,Array.from({length:nDays},(_,i)=>scell(r,i,S.hdr,String(addDays(viewStart,i).getDate()))).join(''),18);r++;
+  rows+=row(r,Array.from({length:nDays},(_,i)=>scell(r,i,S.hdr,'SMTWTFS'[addDays(viewStart,i).getDay()])).join(''),16);r++;
+  for(const t of list){
+    const s=parseISO(t.start),f=estFinish(t),col=whoColor(t.who);
+    const b0=daysBetween(viewStart,s),b1=daysBetween(viewStart,f);
+    const dd=t.ddl?daysBetween(viewStart,parseISO(t.ddl)):-999;
+    const kind=Array.from({length:nDays},(_,i)=>i===dd?'d':(i>=b0&&i<=b1)?'b':isWE(addDays(viewStart,i))?'w':'e');
+    const runs=[];for(let i=0;i<nDays;){if(kind[i]==='b'){let j=i;while(j<nDays&&kind[j]==='b')j++;runs.push([i,j]);i=j}else i++}
+    const big=runs.reduce((a,b)=>(b[1]-b[0]>(a?a[1]-a[0]:0)?b:a),null);
+    let x='';
+    for(let i=0;i<nDays;){
+      if(kind[i]==='b'){
+        const run=runs.find(q=>q[0]===i),n=run[1]-run[0],label=run===big?t.name:'';
+        x+=span(r,i,n,S.bar(col),(cc,st)=>scell(r,cc,st,label));i+=n;
+      }else{
+        x+=kind[i]==='d'?scell(r,i,S.ddl,'◆'):cell(r,i,kind[i]==='w'?S.we:S.txt);i++;
+      }
+    }
+    rows+=row(r,x,20);r++;
+  }
+  rows+=row(r,span(r,0,NCOL,S.sec,(c,s)=>scell(r,c,s,'Daily Load  (number of parallel tasks)')),20);r++;
+  let lx='';
   for(let i=0;i<nDays;i++){
     const d=addDays(viewStart,i);let cnt=0;
     if(!isWE(d))for(const t of tasks){if(t.status!=='done'&&d>=parseISO(t.start)&&d<=estFinish(t))cnt++}
-    const st=isWE(d)?S.we:(cnt===0?S.cap0:cnt===1?S.cap1:S.cap2);
-    lr+=isWE(d)?cell(LASTROW,NI+i,st):scell(LASTROW,NI+i,st,cnt===0?'Free':String(cnt));
+    lx+=isWE(d)?cell(r,i,S.we):scell(r,i,cnt===0?S.cap0:cnt===1?S.cap1:S.cap2,cnt===0?'':String(cnt));
   }
-  rows+=`<row r="${LASTROW}">${lr}</row>`;
+  rows+=row(r,lx,18);
 
-  const widths=vc.length?vc.map(c=>Math.max(10,Math.round(c.w/7))):[20];
-  const cols=widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')+
-    `<col min="${NI+1}" max="${NCOL}" width="7" customWidth="1"/>`;
-  const lastInfo=COLREF(NI-1);
   const sheetXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<sheetViews><sheetView workbookViewId="0"><pane xSplit="${NI}" ySplit="2" topLeftCell="${COLREF(NI)}3" activePane="bottomRight" state="frozen"/></sheetView></sheetViews>
-<cols>${cols}</cols><sheetData>${rows}</sheetData>
-<autoFilter ref="A2:${lastInfo}${list.length+2}"/>${NI>1?`
-<mergeCells count="1"><mergeCell ref="A1:${lastInfo}1"/></mergeCells>`:''}</worksheet>`;
-
+<sheetViews><sheetView showGridLines="0" workbookViewId="0"/></sheetViews>
+<cols><col min="1" max="${NCOL}" width="4.3" customWidth="1"/></cols><sheetData>${rows}</sheetData>
+<mergeCells count="${merges.length}">${merges.map(m=>`<mergeCell ref="${m}"/>`).join('')}</mergeCells></worksheet>`;
   const blob=xlsxBlob([
     {name:'[Content_Types].xml',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
