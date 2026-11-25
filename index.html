@@ -407,7 +407,10 @@ function visible(){
 function isOverdue(t){return t.ddl&&t.status!=='done'&&parseISO(t.ddl)<today()}
 function save(){
   if(SNAPSHOT)return;
-  if(MODE==='local')localStorage.setItem('gantt-tasks',JSON.stringify(tasks));
+  if(MODE==='local'){
+    try{localStorage.setItem('gantt-tasks',JSON.stringify(tasks))}
+    catch(e){alert('Could not save in this browser — the attachments make the data too large for local storage. Remove some attachments or use smaller files.')}
+  }
   else cloudSave();
   saveView();
 }
