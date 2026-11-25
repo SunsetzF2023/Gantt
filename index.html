@@ -685,13 +685,18 @@ $('attList').addEventListener('click',e=>{
   const b=e.target.closest('button[data-i]');if(!b)return;
   attDraft.splice(+b.dataset.i,1);drawAttList();
 });
+let attPending=0;
 $('fAtt').addEventListener('change',async e=>{
-  for(const f of e.target.files){
-    if(f.size>ATT_MAX){alert('"'+f.name+'" is over 300KB — please paste a link in the description instead.');continue}
+  const files=[...e.target.files];
+  e.target.value='';
+  attPending+=files.length;
+  for(const f of files){
+    if(f.size>ATT_MAX){alert('"'+f.name+'" is over 300KB — please paste a link in the description instead.');attPending--;continue}
     const data=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.readAsDataURL(f)});
     attDraft.push({name:f.name,type:f.type,data});
+    attPending--;
+    drawAttList();
   }
-  e.target.value='';
   drawAttList();
 });
 $('btnAdd').onclick=()=>openDlg(null);
@@ -701,6 +706,7 @@ $('fSave').onclick=()=>{
   if(ddl===null){alert('Cannot understand the deadline. Try formats like 27, 11/27 or 2026-11-27.');return}
   const sd=parseDateInput($('fStartD').value);
   if(sd===null){alert('Cannot understand the start date. Try formats like 25, 11/25 or 2026-11-25.');return}
+  if(attPending>0){alert('Attachments are still loading — please wait a moment and save again.');return}
   const old=editId?tasks.find(x=>x.id===editId):null;
   const t={
     name:$('fName').value.trim()||'Untitled task',who:$('fWho').value.trim()||'Unassigned',
