@@ -740,9 +740,10 @@ function openDetail(id){
   html+=sec(esc(L('content')),txt(t.content||t.note||''));
   html+=sec('Deploy plan',txt(t.deploy||''));
   html+=sec('Backout plan',txt(t.backout||''));
-  const att=(t.attachments||[]).map(a=>{
-    if((a.type||'').startsWith('image/'))return `<div class="dd-att"><a href="${a.data}" download="${esc(a.name)}">${esc(a.name)}</a><br><img src="${a.data}" alt="${esc(a.name)}"></div>`;
-    return `<div class="dd-att"><a href="${a.data}" download="${esc(a.name)}">${esc(a.name)}</a></div>`;
+  const att=(t.attachments||[]).filter(a=>typeof a.data==='string'&&a.data.startsWith('data:')).map(a=>{
+    const url=esc(a.data);
+    if((a.type||'').startsWith('image/'))return `<div class="dd-att"><a href="${url}" download="${esc(a.name)}">${esc(a.name)}</a><br><img src="${url}" alt="${esc(a.name)}"></div>`;
+    return `<div class="dd-att"><a href="${url}" download="${esc(a.name)}">${esc(a.name)}</a></div>`;
   }).join('');
   html+=sec('Attachments ('+(t.attachments||[]).length+')',att);
   if(!t.content&&!t.deploy&&!t.backout&&!(t.attachments||[]).length)
