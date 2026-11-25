@@ -141,6 +141,27 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
 .dlg-foot .right-btns{display:flex;gap:8px}
 .dlg-foot button{font:inherit;padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:var(--input);color:var(--ink);cursor:pointer}
 .dlg-foot button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* ---- advanced dialog / detail panel ---- */
+#advToggle{grid-column:1/3;background:none;border:1px dashed var(--border);border-radius:6px;padding:5px;color:var(--muted);cursor:pointer;font:inherit;font-size:12px;text-align:center}
+#advToggle:hover{background:var(--hover)}
+#advFields{display:none;grid-column:1/3;grid-template-columns:90px 1fr;gap:10px 12px;align-items:center}
+#advFields.open{display:grid}
+#advFields label{font-size:12px;color:var(--muted);text-align:right}
+#advFields input,#advFields textarea{font:inherit;padding:5px 8px;border:1px solid var(--border);border-radius:6px;width:100%;background:var(--input);color:var(--ink)}
+.attlist{display:flex;flex-direction:column;gap:3px;font-size:12px}
+.attlist .att{display:flex;align-items:center;gap:6px}
+.attlist .att button{border:none;background:none;color:var(--overdue);cursor:pointer;font:inherit}
+.info-cell{width:34px;flex:none;justify-content:center}
+.info-btn{border:none;background:none;cursor:pointer;color:var(--muted);font-size:14px;border-radius:50%;width:22px;height:22px;line-height:1}
+.info-btn:hover{background:var(--hover);color:var(--accent)}
+.tagc{display:inline-block;padding:0 7px;border-radius:8px;color:#fff;font-size:10px;margin-right:3px;line-height:16px}
+.dd-body{padding:14px 20px;max-height:62vh;overflow:auto;display:flex;flex-direction:column;gap:12px}
+.dd-sec h3{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.dd-sec .dd-txt{white-space:pre-wrap;font-size:13px;line-height:1.5}
+.dd-meta{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 16px;font-size:12px}
+.dd-meta span{color:var(--muted)}
+.dd-body img{max-width:100%;border-radius:6px;border:1px solid var(--border);margin-top:4px}
+.dd-att a{color:var(--accent);font-size:12px}
 footer{padding:6px 16px;background:var(--panel);border-top:1px solid var(--border);font-size:11px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap}
 .legend{display:flex;gap:14px;align-items:center;font-size:12px;color:var(--muted);flex-wrap:wrap}
 .lg{display:inline-flex;align-items:center;gap:4px}
@@ -203,7 +224,6 @@ footer{padding:6px 16px;background:var(--panel);border-top:1px solid var(--borde
   <div class="dlg-head" id="dlgTitle">Edit Task</div>
   <div class="dlg-body">
     <label data-col="name">Task Name</label><input id="fName">
-    <label data-col="content">Content</label><textarea id="fContent" rows="2"></textarea>
     <label data-col="who">Assigned By</label><input id="fWho" list="whoList"><datalist id="whoList"></datalist>
     <label data-col="ddl">Deadline</label><input id="fDdl" type="text" inputmode="numeric" placeholder="e.g. 27 or 11/27 or 2026-11-27">
     <label data-col="status">Status</label>
@@ -214,6 +234,16 @@ footer{padding:6px 16px;background:var(--panel);border-top:1px solid var(--borde
       <option value="done">Done</option>
     </select>
     <div id="cfields"></div>
+    <button type="button" id="advToggle">Advanced ▾</button>
+    <div id="advFields">
+      <label data-col="content">Description</label><textarea id="fContent" rows="2"></textarea>
+      <label data-col="start">Start date</label><input id="fStartD" type="text" inputmode="numeric" placeholder="optional, e.g. 25 or 11/25">
+      <label data-col="tags">Tags</label><input id="fTags" list="tagList" placeholder="comma separated, e.g. network, urgent"><datalist id="tagList"></datalist>
+      <label>Deploy plan</label><textarea id="fDeploy" rows="2"></textarea>
+      <label>Backout plan</label><textarea id="fBackout" rows="2"></textarea>
+      <label>Attachments</label><span><input type="file" id="fAtt" multiple style="font-size:12px"><span style="font-size:11px;color:var(--muted)">max ~300KB each</span></span>
+      <label></label><div class="attlist" id="attList"></div>
+    </div>
   </div>
   <div class="dlg-foot">
     <button id="fDel" style="color:var(--overdue)">Delete</button>
@@ -246,6 +276,17 @@ footer{padding:6px 16px;background:var(--panel);border-top:1px solid var(--borde
     </div>
   </div>
 </dialog>
+<dialog id="dlgDetail" style="width:560px">
+  <div class="dlg-head" id="ddTitle"></div>
+  <div class="dd-body" id="ddBody"></div>
+  <div class="dlg-foot">
+    <span></span>
+    <div class="right-btns">
+      <button id="ddEdit" class="edit-only">Edit</button>
+      <button class="primary" id="ddClose">Close</button>
+    </div>
+  </div>
+</dialog>
 <input type="file" id="fileInput" accept=".json" style="display:none">
 <div id="colpop"></div>
 
@@ -256,10 +297,10 @@ const $=s=>document.getElementById(s);
 const PALETTE=['#0969da','#8250df','#1a7f37','#bf8700','#cf222e','#0e7c86','#d4a017','#57606a'];
 const ST_COLOR={todo:'#57606a',doing:'#0969da',paused:'#bf8700',done:'#1a7f37'};
 
-const EN_LABELS={name:'Task',content:'Content',who:'Assigned By',ddl:'Deadline',status:'Status',prog:'Progress'};
-const CN_LABELS={name:'任务',content:'任务内容',who:'指派人',ddl:'截止时间',status:'状态',prog:'进度'};
-const BUILTIN_W={name:200,content:220,who:110,ddl:100,status:124,prog:72};
-const defaultCols=()=>['name','content','who','ddl','status','prog'].map(id=>({id,label:EN_LABELS[id],builtin:true,visible:true,w:BUILTIN_W[id]}));
+const EN_LABELS={name:'Task',content:'Content',who:'Assigned By',ddl:'Deadline',status:'Status',prog:'Progress',tags:'Tags',start:'Start'};
+const CN_LABELS={name:'任务',content:'任务内容',who:'指派人',ddl:'截止时间',status:'状态',prog:'进度',tags:'标签',start:'开始日期'};
+const BUILTIN_W={name:200,content:220,who:110,ddl:100,status:124,prog:72,tags:130,start:90};
+const defaultCols=()=>['name','tags','content','who','ddl','status','prog','start'].map(id=>({id,label:EN_LABELS[id],builtin:true,visible:id!=='start',w:BUILTIN_W[id]}));
 let COLS=defaultCols();
 const colById=id=>COLS.find(c=>c.id===id);
 const L=id=>(colById(id)||{label:EN_LABELS[id]||id}).label;
@@ -382,6 +423,8 @@ function cellHTML(c,t){
     case 'ddl':return `<div class="cell ctr ${isOverdue(t)?'over':''}" ${w}>${t.ddl?fmtShort(parseISO(t.ddl)):'—'}</div>`;
     case 'status':return `<div class="cell ctr" ${w}><select class="stsel st-${t.status}" data-sid="${t.id}" ${SNAPSHOT?'disabled':''}>${STATUS_OPTS.map(([v,n])=>`<option value="${v}" ${t.status===v?'selected':''}>${n}</option>`).join('')}</select></div>`;
     case 'prog':return `<div class="cell ctr" ${w}>${t.status==='done'?'✓':t.prog+'%'}</div>`;
+    case 'tags':return `<div class="cell" ${w}>${(t.tags||[]).map(g=>`<span class="tagc" style="background:${whoColor(g)}">${esc(g)}</span>`).join('')}</div>`;
+    case 'start':return `<div class="cell ctr" ${w}>${t.start?fmtShort(parseISO(t.start)):'—'}</div>`;
   }
   const v=(t.cv&&t.cv[c.id])??'';
   if(c.type==='dropdown')return `<div class="cell ctr" ${w}><select data-sid="${t.id}" data-cv="${c.id}" ${SNAPSHOT?'disabled':''}><option value=""></option>${(c.options||[]).map(o=>`<option ${o===v?'selected':''}>${esc(o)}</option>`).join('')}</select></div>`;
@@ -400,6 +443,8 @@ function colVal(c,t){
     case 'ddl':return t.ddl||'';
     case 'status':return STATUS_NAME[t.status]||t.status;
     case 'prog':return String(t.prog);
+    case 'tags':return (t.tags||[]).join(', ');
+    case 'start':return t.start||'';
   }
   return String((t.cv&&t.cv[c.id])??'');
 }
@@ -424,9 +469,9 @@ function render(){
 
   // left header + rows
   const vc=visCols();
-  let lh=`<div class="lrow lhead">${vc.map(c=>`<div class="cell ctr hfilter" data-cid="${c.id}" data-hcol="${c.id}" style="width:${c.w}px">${esc(c.label)}<span class="fmark">${colFilters[c.id]?'⏷':''}</span><span class="car">${sortState&&sortState.col===c.id?(sortState.dir==='asc'?'↑':'↓'):'▾'}</span>${SNAPSHOT?'':`<span class="grip" data-grip="${c.id}"></span>`}</div>`).join('')}</div>`;
+  let lh=`<div class="lrow lhead">${vc.map(c=>`<div class="cell ctr hfilter" data-cid="${c.id}" data-hcol="${c.id}" style="width:${c.w}px">${esc(c.label)}<span class="fmark">${colFilters[c.id]?'⏷':''}</span><span class="car">${sortState&&sortState.col===c.id?(sortState.dir==='asc'?'↑':'↓'):'▾'}</span>${SNAPSHOT?'':`<span class="grip" data-grip="${c.id}"></span>`}</div>`).join('')}<div class="cell info-cell"></div></div>`;
   for(const t of list){
-    lh+=`<div class="lrow task ${t.status}" data-id="${t.id}">${vc.map(c=>cellHTML(c,t)).join('')}</div>`;
+    lh+=`<div class="lrow task ${t.status}" data-id="${t.id}">${vc.map(c=>cellHTML(c,t)).join('')}<div class="cell info-cell"><button class="info-btn" data-info="${t.id}" title="Details">ⓘ</button></div></div>`;
   }
   if(!list.length)lh+=`<div class="empty">No tasks — click "+ New Task" to start</div>`;
   $('left').innerHTML=lh;
@@ -460,6 +505,8 @@ function render(){
   const cur=$('selAssignee').value;
   $('selAssignee').innerHTML='<option value="">All assignees</option>'+whos.map(w=>`<option ${w===cur?'selected':''}>${esc(w)}</option>`).join('');
   $('whoList').innerHTML=whos.map(w=>`<option value="${esc(w)}">`).join('');
+  const allTags=[...new Set(tasks.flatMap(t=>t.tags||[]))];
+  $('tagList').innerHTML=allTags.map(g=>`<option value="${esc(g)}">`).join('');
   $('assigneeLegend').innerHTML=whos.map(w=>`<span class="lg"><i style="background:${whoColor(w)}"></i>${esc(w)}</span>`).join(' ');
 
   // interactions
@@ -498,6 +545,8 @@ function render(){
     el.addEventListener('click',e=>{e.stopPropagation();expand(el.dataset.more)});
     el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();expand(el.dataset.more)}});
   });
+  document.querySelectorAll('.info-btn').forEach(el=>
+    el.addEventListener('click',e=>{e.stopPropagation();openDetail(+el.dataset.info)}));
 }
 
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -596,6 +645,13 @@ function openDlg(id,presetDdl){
   $('fDel').style.visibility=id?'visible':'hidden';
   $('fName').value=t.name;$('fContent').value=t.content||t.note||'';$('fWho').value=t.who;
   $('fDdl').value=t.ddl||'';$('fStatus').value=t.status;
+  $('fStartD').value=t.start||'';$('fTags').value=(t.tags||[]).join(', ');
+  $('fDeploy').value=t.deploy||'';$('fBackout').value=t.backout||'';
+  attDraft=(t.attachments||[]).map(a=>({...a}));
+  drawAttList();
+  $('advFields').classList.remove('open');
+  $('advToggle').textContent='Advanced ▾';
+  document.querySelectorAll('#advFields label[data-col]').forEach(l=>{if(EN_LABELS[l.dataset.col])l.textContent=L(l.dataset.col)});
   document.querySelectorAll('#dlg label[data-col]').forEach(l=>l.textContent=L(l.dataset.col));
   $('cfields').innerHTML=COLS.filter(c=>!c.builtin).map(c=>{
     const v=(t.cv&&t.cv[c.id])??'';
@@ -609,16 +665,48 @@ $('fDdl').addEventListener('blur',()=>{
   const p=parseDateInput($('fDdl').value);
   if(p)$('fDdl').value=p;
 });
+$('fStartD').addEventListener('blur',()=>{
+  const p=parseDateInput($('fStartD').value);
+  if(p)$('fStartD').value=p;
+});
+$('advToggle').onclick=()=>{
+  const open=$('advFields').classList.toggle('open');
+  $('advToggle').textContent=open?'Advanced ▴':'Advanced ▾';
+};
+let attDraft=[];
+const ATT_MAX=300*1024;
+function drawAttList(){
+  $('attList').innerHTML=attDraft.map((a,i)=>`<div class="att"><span>${esc(a.name)} (${Math.round((a.data.length*3/4)/1024)}KB)</span><button data-i="${i}" title="Remove">✕</button></div>`).join('');
+}
+$('attList').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-i]');if(!b)return;
+  attDraft.splice(+b.dataset.i,1);drawAttList();
+});
+$('fAtt').addEventListener('change',async e=>{
+  for(const f of e.target.files){
+    if(f.size>ATT_MAX){alert('"'+f.name+'" is over 300KB — please paste a link in the description instead.');continue}
+    const data=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.readAsDataURL(f)});
+    attDraft.push({name:f.name,type:f.type,data});
+  }
+  e.target.value='';
+  drawAttList();
+});
 $('btnAdd').onclick=()=>openDlg(null);
 $('fCancel').onclick=()=>$('dlg').close();
 $('fSave').onclick=()=>{
   const ddl=parseDateInput($('fDdl').value);
   if(ddl===null){alert('Cannot understand the deadline. Try formats like 27, 11/27 or 2026-11-27.');return}
+  const sd=parseDateInput($('fStartD').value);
+  if(sd===null){alert('Cannot understand the start date. Try formats like 25, 11/25 or 2026-11-25.');return}
   const old=editId?tasks.find(x=>x.id===editId):null;
   const t={
     name:$('fName').value.trim()||'Untitled task',who:$('fWho').value.trim()||'Unassigned',
     ddl,status:$('fStatus').value,
-    prog:old?old.prog||0:0,content:$('fContent').value.trim()
+    prog:old?old.prog||0:0,content:$('fContent').value.trim(),
+    start:sd,
+    tags:$('fTags').value.split(',').map(x=>x.trim()).filter(Boolean),
+    deploy:$('fDeploy').value.trim(),backout:$('fBackout').value.trim(),
+    attachments:attDraft.map(a=>({...a}))
   };
   t.cv=Object.assign({},old&&old.cv);
   COLS.filter(c=>!c.builtin).forEach(c=>{const el=$('cf_'+c.id);if(el)t.cv[c.id]=el.value});
@@ -633,6 +721,37 @@ $('fDel').onclick=()=>{
   if(!confirm('Delete task "'+(t?t.name:'')+'"?'))return;
   tasks=tasks.filter(x=>x.id!==editId);save();$('dlg').close();render();
 };
+
+// ----- detail panel -----
+function openDetail(id){
+  const t=tasks.find(x=>x.id===id);if(!t)return;
+  $('ddTitle').textContent=t.name;
+  const sec=(label,body)=>body?`<div class="dd-sec"><h3>${label}</h3>${body}</div>`:'';
+  const txt=v=>`<div class="dd-txt">${esc(v)}</div>`;
+  const stName=STATUS_NAME[t.status]||t.status;
+  let html=`<div class="dd-meta">
+    <div><span>${esc(L('status'))}:</span> ${esc(stName)}</div>
+    <div><span>${esc(L('who'))}:</span> ${esc(t.who)}</div>
+    <div><span>${esc(L('ddl'))}:</span> ${esc(t.ddl||'—')}${isOverdue(t)?' <b style="color:var(--overdue)">overdue</b>':''}</div>
+    <div><span>${esc(L('start'))}:</span> ${esc(t.start||'—')}</div>
+    ${(t.tags||[]).length?`<div style="grid-column:1/3">${t.tags.map(g=>`<span class="tagc" style="background:${whoColor(g)}">${esc(g)}</span>`).join('')}</div>`:''}
+    ${COLS.filter(c=>!c.builtin&&(t.cv&&t.cv[c.id])).map(c=>`<div><span>${esc(c.label)}:</span> ${esc(t.cv[c.id])}</div>`).join('')}
+  </div>`;
+  html+=sec(esc(L('content')),txt(t.content||t.note||''));
+  html+=sec('Deploy plan',txt(t.deploy||''));
+  html+=sec('Backout plan',txt(t.backout||''));
+  const att=(t.attachments||[]).map(a=>{
+    if((a.type||'').startsWith('image/'))return `<div class="dd-att"><a href="${a.data}" download="${esc(a.name)}">${esc(a.name)}</a><br><img src="${a.data}" alt="${esc(a.name)}"></div>`;
+    return `<div class="dd-att"><a href="${a.data}" download="${esc(a.name)}">${esc(a.name)}</a></div>`;
+  }).join('');
+  html+=sec('Attachments ('+(t.attachments||[]).length+')',att);
+  if(!t.content&&!t.deploy&&!t.backout&&!(t.attachments||[]).length)
+    html+=`<div style="color:var(--muted);font-size:12px">No details yet — click Edit and open Advanced to add description, plans or attachments.</div>`;
+  $('ddBody').innerHTML=html;
+  $('ddEdit').onclick=()=>{$('dlgDetail').close();openDlg(id)};
+  $('dlgDetail').showModal();
+}
+$('ddClose').onclick=()=>$('dlgDetail').close();
 
 // ----- toolbar -----
 $('btnPrev').onclick=()=>{viewMonth=new Date(viewMonth.getFullYear(),viewMonth.getMonth()-1,1);saveView();render()};
