@@ -59,7 +59,22 @@ button.primary:hover{filter:brightness(.9)}
 .cell.ctr{justify-content:center}
 .cell.muted{color:var(--muted);font-size:12px}
 .cell.over{color:var(--overdue);font-weight:600}
-.lhead .cell{user-select:none}
+.lhead .cell{user-select:none;cursor:pointer}
+.lhead .cell .car{margin-left:4px;font-size:10px;color:var(--muted)}
+.lhead .cell.filtered .car,.lhead .cell.sorted .car{color:var(--accent)}
+.lhead .cell .fmark{color:var(--accent);margin-left:2px;font-size:10px}
+#colpop{position:fixed;z-index:60;background:var(--panel);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px var(--shadow);width:230px;display:none;flex-direction:column;font-size:12px;color:var(--ink)}
+#colpop .ppsort{display:flex;border-bottom:1px solid var(--border)}
+#colpop .ppsort button{flex:1;padding:7px 4px;background:none;border:none;color:var(--ink);cursor:pointer;font:inherit;font-size:12px}
+#colpop .ppsort button:hover{background:var(--hover)}
+#colpop .ppsort button+button{border-left:1px solid var(--border)}
+#colpop .psearch{padding:6px 8px;border-bottom:1px solid var(--border)}
+#colpop .psearch input{width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:5px;background:var(--input);color:var(--ink);font:inherit;font-size:12px}
+#colpop .pvals{max-height:220px;overflow:auto;padding:4px 0}
+#colpop .pvals label{display:flex;align-items:center;gap:6px;padding:3px 10px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#colpop .pvals label:hover{background:var(--hover)}
+#colpop .pclear{padding:6px 8px;border-top:1px solid var(--border)}
+#colpop .pclear button{width:100%;padding:4px;border:1px solid var(--border);border-radius:5px;background:var(--input);color:var(--overdue);cursor:pointer;font:inherit;font-size:12px}
 .grip{position:absolute;right:0;top:0;width:7px;height:100%;cursor:col-resize}
 .grip:hover,.grip.on{background:#0969da55}
 .cell select{font:inherit;font-size:11px;border:1px solid var(--border);border-radius:10px;padding:2px 6px;cursor:pointer;background:var(--input);color:var(--ink);max-width:100%}
@@ -233,6 +248,7 @@ footer{padding:6px 16px;background:var(--panel);border-top:1px solid var(--borde
   </div>
 </dialog>
 <input type="file" id="fileInput" accept=".json" style="display:none">
+<div id="colpop"></div>
 
 <script src="supabase.js"></script>
 <script>
@@ -323,6 +339,10 @@ function visible(){
   const f=$('selAssignee').value;
   if(f)v=v.filter(t=>t.who===f);
   if($('chkDone').checked)v=v.filter(t=>t.status!=='done');
+  for(const c of COLS){
+    const cf=colFilters[c.id];
+    if(cf)v=v.filter(t=>cf.has(colVal(c,t)));
+  }
   return v;
 }
 function isOverdue(t){return t.ddl&&t.status!=='done'&&parseISO(t.ddl)<today()}
@@ -352,10 +372,31 @@ function cellHTML(c,t){
 }
 
 const expandedDays=new Set();
+const colFilters={};
+let sortState=null;
+function colVal(c,t){
+  switch(c.id){
+    case 'name':return t.name;
+    case 'content':return t.content||t.note||'';
+    case 'who':return t.who;
+    case 'ddl':return t.ddl||'';
+    case 'status':return STATUS_NAME[t.status]||t.status;
+    case 'prog':return String(t.prog);
+  }
+  return String((t.cv&&t.cv[c.id])??'');
+}
 function sortTasks(list){
   return list.sort((a,b)=>{
-    const da=a.ddl||'9999',db=b.ddl||'9999';
-    if(da!==db)return da<db?-1:1;
+    if(sortState){
+      const c=colById(sortState.col);
+      if(c){
+        const cmp=colVal(c,a).localeCompare(colVal(c,b),undefined,{numeric:true});
+        if(cmp)return sortState.dir==='asc'?cmp:-cmp;
+      }
+    }else{
+      const da=a.ddl||'9999',db=b.ddl||'9999';
+      if(da!==db)return da<db?-1:1;
+    }
     return a.name<b.name?-1:1;
   });
 }
@@ -365,7 +406,7 @@ function render(){
 
   // left header + rows
   const vc=visCols();
-  let lh=`<div class="lrow lhead">${vc.map(c=>`<div class="cell ctr" data-cid="${c.id}" style="width:${c.w}px">${esc(c.label)}${SNAPSHOT?'':`<span class="grip" data-grip="${c.id}"></span>`}</div>`).join('')}</div>`;
+  let lh=`<div class="lrow lhead">${vc.map(c=>`<div class="cell ctr hfilter" data-cid="${c.id}" data-hcol="${c.id}" style="width:${c.w}px">${esc(c.label)}<span class="fmark">${colFilters[c.id]?'⏷':''}</span><span class="car">${sortState&&sortState.col===c.id?(sortState.dir==='asc'?'↑':'↓'):'▾'}</span>${SNAPSHOT?'':`<span class="grip" data-grip="${c.id}"></span>`}</div>`).join('')}</div>`;
   for(const t of list){
     lh+=`<div class="lrow task ${t.status}" data-id="${t.id}">${vc.map(c=>cellHTML(c,t)).join('')}</div>`;
   }
@@ -390,7 +431,7 @@ function render(){
       const tip=[t.name,`${L('who')}: ${t.who}`,`${L('ddl')}: ${t.ddl}`,`${L('prog')}: ${t.prog}%`,t.content||''].filter(Boolean).map(esc).join('&#10;');
       chips+=`<div class="chip ${t.status} ${isOverdue(t)?'overdue':''}" data-id="${t.id}" style="background:${ST_COLOR[t.status]}" title="${tip}">${esc(t.name)}</div>`;
     });
-    if(dayTasks.length>MAXC)chips+=`<div class="more" data-more="${ds}">+${dayTasks.length-MAXC} more</div>`;
+    if(dayTasks.length>MAXC)chips+=`<div class="more" data-more="${ds}" tabindex="0" role="button">+${dayTasks.length-MAXC} more</div>`;
     cal+=`<div class="daycell ${isWE(d)?'we':''} ${inMonth?'':'dim'} ${isT?'today':''}" data-date="${ds}"><span class="dnum">${d.getDate()}</span>${chips}</div>`;
   }
   cal+='</div>';
@@ -409,8 +450,6 @@ function render(){
       el.addEventListener('click',e=>{e.stopPropagation();openDlg(+el.dataset.id)}));
     document.querySelectorAll('.daycell').forEach(el=>
       el.addEventListener('click',()=>openDlg(null,el.dataset.date)));
-    document.querySelectorAll('.more').forEach(el=>
-      el.addEventListener('click',e=>{e.stopPropagation();expandedDays.add(el.dataset.more);render()}));
     document.querySelectorAll('.lrow.task select').forEach(sel=>{
       sel.addEventListener('click',e=>e.stopPropagation());
       sel.addEventListener('change',()=>{
@@ -433,9 +472,102 @@ function render(){
     document.querySelectorAll('.chip').forEach(el=>
       el.addEventListener('click',e=>e.stopPropagation()));
   }
+  const expand=ds=>{expandedDays.add(ds);render();
+    const cell=document.querySelector('.daycell[data-date="'+ds+'"]');
+    if(cell){cell.tabIndex=-1;cell.focus()}
+  };
+  document.querySelectorAll('.more').forEach(el=>{
+    el.addEventListener('click',e=>{e.stopPropagation();expand(el.dataset.more)});
+    el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();expand(el.dataset.more)}});
+  });
 }
 
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+// ----- excel-style column filter popup -----
+function closePop(){$('colpop').style.display='none';$('colpop').dataset.open=''}
+function openPop(cid,anchorEl){
+  const pop=$('colpop');
+  pop.dataset.open=cid;
+  pop.style.display='flex';
+  pop.innerHTML='';
+  fillPop(cid);
+  const r=anchorEl.getBoundingClientRect();
+  pop.style.left=Math.max(4,Math.min(r.left,innerWidth-240))+'px';
+  pop.style.top=(r.bottom+4)+'px';
+}
+function fillPop(cid){
+  const c=colById(cid);if(!c)return closePop();
+  const pop=$('colpop');
+  const old=pop.querySelector('.psearch input');
+  const q=old?old.value:'';
+  const vals=[...new Set(tasks.map(t=>colVal(c,t)))];
+  vals.sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  const cf=colFilters[cid];
+  const isOn=v=>!cf||cf.has(v);
+  const shown=vals.filter(v=>!q||v.toLowerCase().includes(q.toLowerCase()));
+  const allOn=shown.length>0&&shown.every(isOn);
+  pop.innerHTML=`<div class="ppsort">
+      <button data-act="asc">Sort A to Z</button>
+      <button data-act="desc">Sort Z to A</button>
+    </div>
+    <div class="psearch"><input placeholder="Search" value="${esc(q)}"></div>
+    <div class="pvals">
+      <label><input type="checkbox" data-act="all" ${allOn?'checked':''}> (Select All)</label>
+      ${shown.map(v=>`<label><input type="checkbox" data-v="${esc(v)}" ${isOn(v)?'checked':''}> <span title="${esc(v)||'(Blanks)'}">${esc(v)||'(Blanks)'}</span></label>`).join('')||'<div style="padding:6px 10px;color:var(--muted)">No values</div>'}
+    </div>
+    <div class="pclear"><button data-act="clear" ${cf?'':'disabled style="opacity:.5"'}>Clear filter</button></div>`;
+  const inp=pop.querySelector('.psearch input');
+  if(old||document.activeElement===document.body){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length)}
+}
+$('colpop').addEventListener('input',e=>{
+  if(e.target.matches('.psearch input'))fillPop($('colpop').dataset.open);
+});
+$('colpop').addEventListener('change',e=>{
+  const pop=$('colpop'),cid=pop.dataset.open,c=colById(cid);
+  if(!c)return;
+  const vals=[...new Set(tasks.map(t=>colVal(c,t)))];
+  if(!colFilters[cid])colFilters[cid]=new Set(vals);
+  const cf=colFilters[cid];
+  const q=(pop.querySelector('.psearch input')||{}).value||'';
+  const shown=vals.filter(v=>!q||v.toLowerCase().includes(q.toLowerCase()));
+  if(e.target.dataset.act==='all'){
+    shown.forEach(v=>e.target.checked?cf.add(v):cf.delete(v));
+    pop.querySelectorAll('[data-v]').forEach(b=>{b.checked=cf.has(b.dataset.v)});
+  }else if(e.target.dataset.v!==undefined){
+    e.target.checked?cf.add(e.target.dataset.v):cf.delete(e.target.dataset.v);
+    const allBox=pop.querySelector('[data-act=all]');
+    if(allBox)allBox.checked=shown.length>0&&shown.every(v=>cf.has(v));
+  }
+  if(cf.size>=vals.length)delete colFilters[cid];
+  const cb=pop.querySelector('[data-act=clear]');
+  if(cb){cb.disabled=!colFilters[cid];cb.style.opacity=colFilters[cid]?'1':'.5'}
+  render();
+});
+$('colpop').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-act]');if(!b)return;
+  const cid=$('colpop').dataset.open;
+  if(b.dataset.act==='asc'||b.dataset.act==='desc'){
+    sortState={col:cid,dir:b.dataset.act};render();closePop();return;
+  }
+  if(b.dataset.act==='clear'){
+    delete colFilters[cid];render();fillPop(cid);
+  }
+
+});
+document.addEventListener('click',e=>{
+  const hc=e.target.closest('.hfilter');
+  if(hc&&!e.target.closest('.grip')){
+    const pop=$('colpop');
+    if(pop.dataset.open===hc.dataset.hcol&&pop.style.display==='flex'){closePop();return}
+    openPop(hc.dataset.hcol,hc);
+    return;
+  }
+  if(!e.target.closest('#colpop'))closePop();
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePop()});
+$('scroll').addEventListener('scroll',closePop);
+addEventListener('resize',closePop);
 
 // ----- dialog -----
 let editId=null;
