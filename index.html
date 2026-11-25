@@ -350,6 +350,7 @@ function cellHTML(c,t){
   return `<div class="cell ${c.type==='text'?'':'ctr'}" ${w} title="${esc(v)}">${esc(shown)}</div>`;
 }
 
+const expandedDays=new Set();
 function sortTasks(list){
   return list.sort((a,b)=>{
     const da=a.ddl||'9999',db=b.ddl||'9999';
@@ -382,13 +383,13 @@ function render(){
     const d=addDays(gridStart,i),ds=fmt(d);
     const inMonth=d.getMonth()===m,isT=+d===+today();
     const dayTasks=byDate[ds]||[];
-    const MAXC=4;
+    const MAXC=expandedDays.has(ds)?dayTasks.length:4;
     let chips='';
     dayTasks.slice(0,MAXC).forEach(t=>{
       const tip=[t.name,`${L('who')}: ${t.who}`,`${L('ddl')}: ${t.ddl}`,`${L('prog')}: ${t.prog}%`,t.content||''].filter(Boolean).map(esc).join('&#10;');
       chips+=`<div class="chip ${t.status} ${isOverdue(t)?'overdue':''}" data-id="${t.id}" style="background:${ST_COLOR[t.status]}" title="${tip}">${esc(t.name)}</div>`;
     });
-    if(dayTasks.length>MAXC)chips+=`<div class="more">+${dayTasks.length-MAXC} more</div>`;
+    if(dayTasks.length>MAXC)chips+=`<div class="more" data-more="${ds}">+${dayTasks.length-MAXC} more</div>`;
     cal+=`<div class="daycell ${isWE(d)?'we':''} ${inMonth?'':'dim'} ${isT?'today':''}" data-date="${ds}"><span class="dnum">${d.getDate()}</span>${chips}</div>`;
   }
   cal+='</div>';
@@ -407,6 +408,8 @@ function render(){
       el.addEventListener('click',e=>{e.stopPropagation();openDlg(+el.dataset.id)}));
     document.querySelectorAll('.daycell').forEach(el=>
       el.addEventListener('click',()=>openDlg(null,el.dataset.date)));
+    document.querySelectorAll('.more').forEach(el=>
+      el.addEventListener('click',e=>{e.stopPropagation();expandedDays.add(el.dataset.more);render()}));
     document.querySelectorAll('.lrow.task select').forEach(sel=>{
       sel.addEventListener('click',e=>e.stopPropagation());
       sel.addEventListener('change',()=>{
