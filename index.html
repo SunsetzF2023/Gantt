@@ -904,7 +904,8 @@ $('btnExcel').onclick=()=>{
 
 // 导出只读快照: 序列化整个页面 + 注入数据, 重开后自动进入只读模式
 $('btnSnap').onclick=()=>{
-  $('dlg').close();
+  $('dlg').close();$('dlgDetail').close();
+  $('ddBody').innerHTML='';$('ddTitle').textContent='';
   const data=JSON.stringify({tasks,generated:fmt(today()),cols:COLS,viewMonth:fmt(viewMonth),hideDone:$('chkDone').checked}).replace(/<\//g,'<\\/');
   const inject=`<script type="application/json" id="snapshot-data">`+data+`<`+`/script>`;
   const ut=$('userText').textContent;$('userText').textContent='';
