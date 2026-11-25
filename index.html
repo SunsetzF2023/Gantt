@@ -289,6 +289,7 @@ if(snapEl){
   document.querySelectorAll('.edit-only').forEach(e=>e.style.display='none');
   $('snapBanner').style.display='';
   $('snapBanner').textContent='Read-only snapshot · generated '+(snap.generated||'');
+  window.__snapHideDone=!!snap.hideDone;
 }else{
   viewMonth=JSON.parse(localStorage.getItem('gantt-viewmonth')||'null');
   document.querySelectorAll('.edit-only').forEach(e=>e.style.display='none');
@@ -483,7 +484,7 @@ $('btnNext').onclick=()=>{viewMonth=new Date(viewMonth.getFullYear(),viewMonth.g
 $('btnToday').onclick=()=>{viewMonth=new Date(today().getFullYear(),today().getMonth(),1);saveView();render()};
 $('selAssignee').onchange=render;
 $('chkDone').onchange=()=>{localStorage.setItem('gantt-hide-done',$('chkDone').checked?'1':'0');render()};
-$('chkDone').checked=localStorage.getItem('gantt-hide-done')!=='0';
+$('chkDone').checked=window.__snapHideDone!==undefined?window.__snapHideDone:localStorage.getItem('gantt-hide-done')!=='0';
 
 // dark mode
 if(localStorage.getItem('gantt-dark')==='1')document.body.classList.add('dark');
@@ -628,7 +629,7 @@ $('btnExcel').onclick=()=>{
 // 导出只读快照: 序列化整个页面 + 注入数据, 重开后自动进入只读模式
 $('btnSnap').onclick=()=>{
   $('dlg').close();
-  const data=JSON.stringify({tasks,generated:fmt(today()),cols:COLS,viewMonth:fmt(viewMonth)}).replace(/<\//g,'<\\/');
+  const data=JSON.stringify({tasks,generated:fmt(today()),cols:COLS,viewMonth:fmt(viewMonth),hideDone:$('chkDone').checked}).replace(/<\//g,'<\\/');
   const inject=`<script type="application/json" id="snapshot-data">`+data+`<`+`/script>`;
   const ut=$('userText').textContent;$('userText').textContent='';
   let html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
