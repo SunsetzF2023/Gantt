@@ -31,11 +31,10 @@ button.primary:hover{background:#0757b3}
 .lg i{width:12px;height:12px;border-radius:3px;display:inline-block}
 .lg i.diamond{width:9px;height:9px;border-radius:0;transform:rotate(45deg);background:#d1242f}
 .scroll{flex:1;overflow:auto;background:#fff}
-.grid{display:flex;flex-direction:column;min-width:100%;width:max-content}
-.left{position:sticky;left:0;z-index:15;background:#fff;flex:none;width:max-content;border-bottom:3px solid var(--border);box-shadow:0 3px 6px rgba(0,0,0,.06)}
-.right{min-width:100%}
+.grid{display:flex;min-width:100%;width:max-content}
+.left{position:sticky;left:0;z-index:15;background:#fff;flex:none;width:max-content;box-shadow:3px 0 6px rgba(0,0,0,.08)}
 .lrow{display:flex;border-bottom:1px solid var(--border);height:var(--row-h);align-items:stretch}
-.lhead{height:36px;background:#f2f4f7;font-weight:600;color:var(--muted);font-size:12px}
+.lhead{height:var(--head-h);background:#f2f4f7;font-weight:600;color:var(--muted);font-size:12px;position:sticky;top:0;z-index:5}
 .cell{flex:none;position:relative;padding:6px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-right:1px solid var(--border);display:flex;align-items:center}
 .cell.ctr{justify-content:center}
 .cell.two{flex-direction:column;align-items:flex-start;justify-content:center;line-height:1.2;font-size:11px}
@@ -104,6 +103,7 @@ button.primary:hover{background:#0757b3}
 .bar .fill{position:absolute;inset:0;border-radius:5px;background:rgba(0,0,0,.28);transform-origin:left;pointer-events:none}
 .bar span{position:relative;z-index:1}
 .bar.done{opacity:.45}
+.barlabel{position:absolute;top:9px;height:22px;display:flex;align-items:center;font-size:11px;color:var(--ink);white-space:nowrap;pointer-events:none;z-index:2}
 .bar.paused{opacity:.7;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.25) 0 6px,transparent 6px 12px)!important}
 .bar.over-ddl{outline:2px solid #d1242f;outline-offset:1px}
 .ddl-mark{position:absolute;top:4px;width:10px;height:10px;background:#d1242f;transform:rotate(45deg);z-index:3;border:1.5px solid #fff;box-shadow:0 0 0 1px #d1242f}
@@ -391,7 +391,7 @@ function render(){
     const d=addDays(viewStart,i),we=isWE(d),isT=+d===+today();
     drow+=`<div class="dcell ${we?'we':''} ${isT?'today':''}" style="width:${W}px">${d.getDate()}<span class="wd">${'SMTWTFS'[d.getDay()]}</span></div>`;
     let cnt=0,names=[];
-    if(!we)for(const t of tasks){
+    if(!we)for(const t of list){
       if(t.status==='done')continue;
       if(d>=parseISO(t.start)&&d<=estFinish(t)){cnt++;names.push(t.name)}
     }
@@ -414,10 +414,11 @@ function render(){
     const over=t.ddl&&f>parseISO(t.ddl);
     const tip=[t.name,`${L('who')}: ${t.who}`,`${t.start} → ${fmt(f)}`,`${L('ddl')}: ${t.ddl||'—'}`,`${L('prog')}: ${t.prog}%`,
       ...COLS.filter(c=>!c.builtin&&t.cv&&t.cv[c.id]).map(c=>`${c.label}: ${t.cv[c.id]}`),t.content||t.note||''].filter(Boolean).map(esc).join('&#10;');
+    const bw=Math.max(w,W*.6),inside=bw>=90;
     let bar=`<div class="bar ${t.status} ${over?'over-ddl':''}" data-id="${t.id}"
-      style="left:${x}px;width:${Math.max(w,W*.6)}px;background:${col}"
+      style="left:${x}px;width:${bw}px;background:${col}"
       title="${tip}">
-      <div class="fill" style="transform:scaleX(${t.prog/100})"></div><span>${esc(t.name)}</span></div>`;
+      <div class="fill" style="transform:scaleX(${t.prog/100})"></div>${inside?`<span>${esc(t.name)}</span>`:''}</div>${inside?'':`<span class="barlabel" style="left:${x+bw+5}px">${esc(t.name)}</span>`}`;
     let dm='';
     if(t.ddl){
       const dx=daysBetween(viewStart,parseISO(t.ddl))*W+W-8;
@@ -501,6 +502,8 @@ $('fSave').onclick=()=>{
   save();$('dlg').close();render();
 };
 $('fDel').onclick=()=>{
+  const t=tasks.find(x=>x.id===editId);
+  if(!confirm('Delete task "'+(t?t.name:'')+'"?'))return;
   tasks=tasks.filter(x=>x.id!==editId);save();$('dlg').close();render();
 };
 
@@ -664,7 +667,7 @@ $('btnExcel').onclick=()=>{
   let lx='';
   for(let i=0;i<nDays;i++){
     const d=addDays(viewStart,i);let cnt=0;
-    if(!isWE(d))for(const t of tasks){if(t.status!=='done'&&d>=parseISO(t.start)&&d<=estFinish(t))cnt++}
+    if(!isWE(d))for(const t of list){if(t.status!=='done'&&d>=parseISO(t.start)&&d<=estFinish(t))cnt++}
     lx+=isWE(d)?cell(r,i,S.we):scell(r,i,cnt===0?S.cap0:cnt===1?S.cap1:S.cap2,cnt===0?'':String(cnt));
   }
   rows+=row(r,lx,18);
