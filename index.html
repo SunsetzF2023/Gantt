@@ -463,6 +463,7 @@ $('fSave').onclick=()=>{
   t.cv=Object.assign({},old&&old.cv);
   COLS.filter(c=>!c.builtin).forEach(c=>{const el=$('cf_'+c.id);if(el)t.cv[c.id]=el.value});
   if(t.status==='done')t.prog=100;
+  t.start=(old&&old.start)||fmt(today());
   if(editId)Object.assign(tasks.find(x=>x.id===editId),t);
   else{t.id=Math.max(0,...tasks.map(x=>x.id))+1;tasks.push(t)}
   save();$('dlg').close();render();
