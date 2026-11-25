@@ -431,9 +431,13 @@ function render(){
     document.querySelectorAll('.chip').forEach(el=>
       el.addEventListener('click',e=>e.stopPropagation()));
   }
+  const expand=ds=>{expandedDays.add(ds);render();
+    const cell=document.querySelector('.daycell[data-date="'+ds+'"]');
+    if(cell){cell.tabIndex=-1;cell.focus()}
+  };
   document.querySelectorAll('.more').forEach(el=>{
-    el.addEventListener('click',e=>{e.stopPropagation();expandedDays.add(el.dataset.more);render()});
-    el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();expandedDays.add(el.dataset.more);render()}});
+    el.addEventListener('click',e=>{e.stopPropagation();expand(el.dataset.more)});
+    el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();expand(el.dataset.more)}});
   });
 }
 
